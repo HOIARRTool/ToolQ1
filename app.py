@@ -1102,107 +1102,45 @@ def display_admin_page():
 
 
 def display_executive_dashboard():
-    # --- 1. โหลดข้อมูล ---
-    try:
-        df = pd.read_parquet(PERSISTED_DATA_PATH)
-        df['Occurrence Date'] = pd.to_datetime(df['Occurrence Date'])
-    except FileNotFoundError:
-        st.warning("ยังไม่มีข้อมูลในระบบ กรุณาติดต่อผู้ดูแลระบบเพื่ออัปโหลดข้อมูล")
-        st.markdown(f'<p>หากคุณเป็น Admin กรุณาไปที่ URL <a href="/?page=admin">?page=admin</a> เพื่ออัปโหลดข้อมูล</p>',
-                    unsafe_allow_html=True)
-        return
-
-    # --- 2. สร้าง Sidebar และเมนูกรองข้อมูล ---
+    # --- 1. สร้าง Sidebar และเมนูเลือกหน้า ---
     st.sidebar.markdown(
         f"""<div style="display: flex; align-items: center; margin-bottom: 1rem;"><img src="{LOGO_URL}" style="height: 32px; margin-right: 10px;"><h2 style="margin: 0; font-size: 1.7rem;"><span class="gradient-text">HOIA-RR Menu</span></h2></div>""",
         unsafe_allow_html=True)
 
-    st.sidebar.markdown("---")
-    analysis_options_list = ["RCA Helpdesk (AI Assistant)", "จัดการข้อมูล (Admin)"]
-
-    if 'selected_analysis' not in st.session_state:
-        st.session_state.selected_analysis = analysis_options_list[0]
-
-    for option in analysis_options_list:
-        if st.sidebar.button(option, key=f"btn_{option}",
-                             type="primary" if st.session_state.selected_analysis == option else "secondary",
-                             use_container_width=True):
-            st.session_state.selected_analysis = option
-            st.rerun()
-    st.sidebar.markdown("---")
-    st.sidebar.header("Filter by Date")
-
-    min_date_in_data = df['Occurrence Date'].min().date()
-    max_date_in_data = df['Occurrence Date'].max().date()
-    today = datetime.now().date()
-
-    filter_option = st.sidebar.selectbox("เลือกช่วงเวลา:",
-                                         ["ทั้งหมด", "ปีนี้", "ไตรมาสนี้", "เดือนนี้", "ปีที่แล้ว", "กำหนดเอง..."])
-
-    start_date, end_date = min_date_in_data, max_date_in_data
-
-    if filter_option == "ปีนี้":
-        start_date = today.replace(month=1, day=1)
-        end_date = today
-    elif filter_option == "ไตรมาสนี้":
-        current_quarter = (today.month - 1) // 3 + 1
-        start_date = datetime(today.year, 3 * current_quarter - 2, 1).date()
-        end_date = today
-    elif filter_option == "เดือนนี้":
-        start_date = today.replace(day=1)
-        end_date = today
-    elif filter_option == "ปีที่แล้ว":
-        last_year = today.year - 1
-        start_date = datetime(last_year, 1, 1).date()
-        end_date = datetime(last_year, 12, 31).date()
-    elif filter_option == "กำหนดเอง...":
-        start_date, end_date = st.sidebar.date_input(
-            "เลือกระหว่างวันที่:",
-            [min_date_in_data, max_date_in_data],
-            min_value=min_date_in_data,
-            max_value=max_date_in_data
-        )
-
-    df_filtered = df[(df['Occurrence Date'].dt.date >= start_date) & (df['Occurrence Date'].dt.date <= end_date)].copy()
-    # ✅ *** เพิ่มบรรทัดนี้เพื่อสร้างคอลัมน์ชื่อเต็มสำหรับทุกการวิเคราะห์ ***
-    df_filtered['Incident Type Name'] = df_filtered['Incident Type'].map(type_name).fillna(df_filtered['Incident Type'])
-    if df_filtered.empty:
-        st.sidebar.warning("ไม่พบข้อมูลในช่วงเวลาที่ท่านเลือก")
-        st.warning("ไม่พบข้อมูลในช่วงเวลาที่ท่านเลือก กรุณาเลือกช่วงเวลาอื่น")
-        return
-
-    min_date_str = df_filtered['Occurrence Date'].min().strftime('%d/%m/%Y')
-    max_date_str = df_filtered['Occurrence Date'].max().strftime('%d/%m/%Y')
-
-    max_p = df_filtered['Occurrence Date'].max().to_period('M')
-    min_p = df_filtered['Occurrence Date'].min().to_period('M')
-    total_month = (max_p.year - min_p.year) * 12 + (max_p.month - min_p.month) + 1
-    total_month = max(1, total_month)
-
-    st.sidebar.markdown(f"**ช่วงข้อมูล:** {min_date_str} ถึง {max_date_str}")
-    st.sidebar.markdown(f"**จำนวนเดือน:** {total_month} เดือน")
-    st.sidebar.markdown(f"**จำนวนอุบัติการณ์:** {df_filtered.shape[0]:,} รายการ")
-
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("เลือกส่วนที่ต้องการแสดงผล:")
-
-    analysis_options_list = [
+    # กำหนดรายการหน้าทั้งหมด
+    app_functions_list = ["RCA Helpdesk (AI Assistant)", "จัดการข้อมูล (Admin)"]
+    dashboard_pages_list = [
         "แดชบอร์ดสรุปภาพรวม", "Heatmap รายเดือน", "Sentinel Events & Top 10",
         "Risk Matrix (Interactive)", "กราฟสรุปอุบัติการณ์ (รายมิติ)",
         "Sankey: ภาพรวม", "Sankey: มาตรฐานสำคัญจำเป็นต่อความปลอดภัย 9 ข้อ",
         "สรุปอุบัติการณ์ตาม Safety Goals", "วิเคราะห์ตามหมวดหมู่และสถานะการแก้ไข",
         "Persistence Risk Index", "Early Warning: อุบัติการณ์ที่มีแนวโน้มสูงขึ้น", "บทสรุปสำหรับผู้บริหาร",
-
     ]
-    if 'selected_analysis' not in st.session_state:
-        st.session_state.selected_analysis = analysis_options_list[0]
 
-    for option in analysis_options_list:
+    # ตั้งค่าหน้าเริ่มต้นเป็น "RCA Helpdesk"
+    if 'selected_analysis' not in st.session_state:
+        st.session_state.selected_analysis = "RCA Helpdesk (AI Assistant)"
+
+    # สร้างปุ่มสำหรับเมนูหลัก
+    st.sidebar.markdown("---")
+    for option in app_functions_list:
         if st.sidebar.button(option, key=f"btn_{option}",
                              type="primary" if st.session_state.selected_analysis == option else "secondary",
                              use_container_width=True):
             st.session_state.selected_analysis = option
             st.rerun()
+
+    # สร้างปุ่มสำหรับหน้าแดชบอร์ด
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("เลือกส่วนที่ต้องการแสดงผล:")
+    for option in dashboard_pages_list:
+        if st.sidebar.button(option, key=f"btn_{option}",
+                             type="primary" if st.session_state.selected_analysis == option else "secondary",
+                             use_container_width=True):
+            st.session_state.selected_analysis = option
+            st.rerun()
+
+    # --- ส่วนท้ายของ Sidebar ที่แสดงเสมอ ---
     st.sidebar.markdown("---")
     st.sidebar.markdown(f"""
             **กิตติกรรมประกาศ:** ขอขอบพระคุณ 
@@ -1215,45 +1153,132 @@ def display_executive_dashboard():
 
             เป็นอย่างสูง สำหรับการริเริ่ม เติมเต็ม สนับสนุน และสร้างแรงบันดาลใจ อันเป็นรากฐานสำคัญในการพัฒนาเครื่องมือนี้
             """)
-
-    # ✅ --- เพิ่มโค้ดส่วนนี้เข้าไปที่ท้ายสุดของ Sidebar ---
     st.sidebar.markdown("---")
     st.sidebar.markdown(
         '<p style="font-size:12px; color:gray;">*เครื่องมือนี้เป็นส่วนหนึ่งของวิทยานิพนธ์ IMPLEMENTING THE  HOSPITAL OCCURRENCE/INCIDENT ANALYSIS & RISK REGISTER (HOIA-RR TOOL) IN THAI HOSPITALS: A STUDY ON EFFECTIVE ADOPTION โดย นางสาววิลาศินี  เขื่อนแก้ว นักศึกษาปริญญาโท สำนักวิชาวิทยาศาสตร์สุขภาพ มหาวิทยาลัยแม่ฟ้าหลวง</p>',
         unsafe_allow_html=True)
-    # ✅ --- จบส่วนที่เพิ่ม ---
+    
+    # --- 2. การจัดการแสดงผลตามหน้าที่เลือก ---
+    selected_analysis = st.session_state.selected_analysis
 
-    # --- 3. คำนวณ Metrics สำหรับ Dashboard ---
-    metrics_data = {}
-    metrics_data['total_processed_incidents'] = df_filtered.shape[0]
-    metrics_data['total_psg9_incidents_for_metric1'] = \
-    df_filtered[df_filtered['รหัส'].isin(psg9_r_codes_for_counting)].shape[
-        0] if 'psg9_r_codes_for_counting' in globals() else 0
-    if 'sentinel_composite_keys' in globals() and sentinel_composite_keys:
-        df_filtered['Sentinel code for check'] = df_filtered['รหัส'].astype(str).str.strip() + '-' + df_filtered[
-            'Impact'].astype(str).str.strip()
-        metrics_data['total_sentinel_incidents_for_metric1'] = \
-        df_filtered[df_filtered['Sentinel code for check'].isin(sentinel_composite_keys)].shape[0]
+    # ส่วนที่ไม่ต้องโหลดข้อมูล
+    if selected_analysis == "RCA Helpdesk (AI Assistant)":
+        st.markdown("<h4 style='color: #001f3f;'>AI Assistant: ที่ปรึกษาเคสอุบัติการณ์</h4>", unsafe_allow_html=True)
+        AI_IS_CONFIGURED = False
+        if genai:
+            try:
+                genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+                AI_IS_CONFIGURED = True
+            except Exception as e:
+                st.error(f"⚠️ ไม่สามารถตั้งค่า AI Assistant ได้: {e}")
+        else:
+            st.error("ไม่ได้ติดตั้งไลบรารี google-generativeai")
+        if not AI_IS_CONFIGURED:
+            st.stop()
+        st.info("อธิบายรายละเอียดของอุบัติการณ์ที่เกิดขึ้น เพื่อให้ AI ช่วยให้คำปรึกษา")
+        incident_description = st.text_area(
+            "กรุณาอธิบายรายละเอียดอุบัติการณ์ที่นี่:",
+            height=250,
+            placeholder="เช่น ผู้ป่วยหญิงอายุ 65 ปี เป็นโรคเบาหวาน ได้รับยา losartan แต่เกิดผื่นขึ้นทั่วตัว แพทย์ประเมินว่าเป็นอาการแพ้ยา..."
+        )
+        if st.button("ขอคำปรึกษาจาก AI", type="primary", use_container_width=True):
+            if not incident_description.strip():
+                st.warning("กรุณาป้อนรายละเอียดอุบัติการณ์ก่อนครับ")
+            else:
+                with st.spinner("AI กำลังวิเคราะห์และให้คำปรึกษา..."):
+                    consultation = get_consultation_response(incident_description)
+                    st.markdown("---")
+                    st.markdown("### ผลการปรึกษาจาก AI:")
+                    st.markdown(consultation)
+
+    elif selected_analysis == "จัดการข้อมูล (Admin)":
+        display_admin_page()
+
+    # ส่วนที่ต้องโหลดข้อมูล (หน้าแดชบอร์ดทั้งหมด)
     else:
-        metrics_data['total_sentinel_incidents_for_metric1'] = 0
+        # --- 2.1 โหลดข้อมูล (เฉพาะส่วนนี้) ---
+        try:
+            df = pd.read_parquet(PERSISTED_DATA_PATH)
+            df['Occurrence Date'] = pd.to_datetime(df['Occurrence Date'])
+        except FileNotFoundError:
+            st.warning("ยังไม่มีข้อมูลในระบบ กรุณาไปที่หน้า 'จัดการข้อมูล (Admin)' เพื่ออัปโหลดข้อมูล")
+            return # หยุดการทำงานของหน้านี้
 
-    severe_impact_levels_list = ['3', '4', '5']
-    df_severe_incidents_calc = df_filtered[df_filtered['Impact Level'].isin(severe_impact_levels_list)].copy()
-    metrics_data['total_severe_incidents'] = df_severe_incidents_calc.shape[0]
-    if 'Resulting Actions' in df_filtered.columns:
-        unresolved_conditions = df_severe_incidents_calc['Resulting Actions'].astype(str).isin(['None', '', 'nan'])
-        df_severe_unresolved_calc = df_severe_incidents_calc[unresolved_conditions].copy()
-        metrics_data['total_severe_unresolved_incidents_val'] = df_severe_unresolved_calc.shape[0]
-        metrics_data['total_severe_unresolved_psg9_incidents_val'] = \
-        df_severe_unresolved_calc[df_severe_unresolved_calc['รหัส'].isin(psg9_r_codes_for_counting)].shape[
+        # --- 2.2 สร้าง Sidebar ส่วนที่ต้องใช้ข้อมูล ---
+        st.sidebar.header("Filter by Date")
+        min_date_in_data = df['Occurrence Date'].min().date()
+        max_date_in_data = df['Occurrence Date'].max().date()
+        today = datetime.now().date()
+        filter_option = st.sidebar.selectbox("เลือกช่วงเวลา:",
+                                             ["ทั้งหมด", "ปีนี้", "ไตรมาสนี้", "เดือนนี้", "ปีที่แล้ว", "กำหนดเอง..."])
+        start_date, end_date = min_date_in_data, max_date_in_data
+        if filter_option == "ปีนี้":
+            start_date = today.replace(month=1, day=1)
+            end_date = today
+        elif filter_option == "ไตรมาสนี้":
+            current_quarter = (today.month - 1) // 3 + 1
+            start_date = datetime(today.year, 3 * current_quarter - 2, 1).date()
+            end_date = today
+        elif filter_option == "เดือนนี้":
+            start_date = today.replace(day=1)
+            end_date = today
+        elif filter_option == "ปีที่แล้ว":
+            last_year = today.year - 1
+            start_date = datetime(last_year, 1, 1).date()
+            end_date = datetime(last_year, 12, 31).date()
+        elif filter_option == "กำหนดเอง...":
+            start_date, end_date = st.sidebar.date_input(
+                "เลือกระหว่างวันที่:",
+                [min_date_in_data, max_date_in_data],
+                min_value=min_date_in_data,
+                max_value=max_date_in_data
+            )
+        df_filtered = df[(df['Occurrence Date'].dt.date >= start_date) & (df['Occurrence Date'].dt.date <= end_date)].copy()
+        df_filtered['Incident Type Name'] = df_filtered['Incident Type'].map(type_name).fillna(df_filtered['Incident Type'])
+        if df_filtered.empty:
+            st.sidebar.warning("ไม่พบข้อมูลในช่วงเวลาที่ท่านเลือก")
+            st.warning("ไม่พบข้อมูลในช่วงเวลาที่ท่านเลือก กรุณาเลือกช่วงเวลาอื่น")
+            return
+        min_date_str = df_filtered['Occurrence Date'].min().strftime('%d/%m/%Y')
+        max_date_str = df_filtered['Occurrence Date'].max().strftime('%d/%m/%Y')
+        max_p = df_filtered['Occurrence Date'].max().to_period('M')
+        min_p = df_filtered['Occurrence Date'].min().to_period('M')
+        total_month = (max_p.year - min_p.year) * 12 + (max_p.month - min_p.month) + 1
+        total_month = max(1, total_month)
+        st.sidebar.markdown(f"**ช่วงข้อมูล:** {min_date_str} ถึง {max_date_str}")
+        st.sidebar.markdown(f"**จำนวนเดือน:** {total_month} เดือน")
+        st.sidebar.markdown(f"**จำนวนอุบัติการณ์:** {df_filtered.shape[0]:,} รายการ")
+
+
+        # --- 2.3 คำนวณ Metrics สำหรับ Dashboard ---
+        metrics_data = {}
+        metrics_data['total_processed_incidents'] = df_filtered.shape[0]
+        metrics_data['total_psg9_incidents_for_metric1'] = \
+        df_filtered[df_filtered['รหัส'].isin(psg9_r_codes_for_counting)].shape[
             0] if 'psg9_r_codes_for_counting' in globals() else 0
-    else:
-        metrics_data['total_severe_unresolved_incidents_val'] = "N/A"
-        metrics_data['total_severe_unresolved_psg9_incidents_val'] = "N/A"
-    metrics_data['total_month'] = total_month
-
-    df_freq = df_filtered['Incident'].value_counts().reset_index()
-    df_freq.columns = ['Incident', 'count']
+        if 'sentinel_composite_keys' in globals() and sentinel_composite_keys:
+            df_filtered['Sentinel code for check'] = df_filtered['รหัส'].astype(str).str.strip() + '-' + df_filtered[
+                'Impact'].astype(str).str.strip()
+            metrics_data['total_sentinel_incidents_for_metric1'] = \
+            df_filtered[df_filtered['Sentinel code for check'].isin(sentinel_composite_keys)].shape[0]
+        else:
+            metrics_data['total_sentinel_incidents_for_metric1'] = 0
+        severe_impact_levels_list = ['3', '4', '5']
+        df_severe_incidents_calc = df_filtered[df_filtered['Impact Level'].isin(severe_impact_levels_list)].copy()
+        metrics_data['total_severe_incidents'] = df_severe_incidents_calc.shape[0]
+        if 'Resulting Actions' in df_filtered.columns:
+            unresolved_conditions = df_severe_incidents_calc['Resulting Actions'].astype(str).isin(['None', '', 'nan'])
+            df_severe_unresolved_calc = df_severe_incidents_calc[unresolved_conditions].copy()
+            metrics_data['total_severe_unresolved_incidents_val'] = df_severe_unresolved_calc.shape[0]
+            metrics_data['total_severe_unresolved_psg9_incidents_val'] = \
+            df_severe_unresolved_calc[df_severe_unresolved_calc['รหัส'].isin(psg9_r_codes_for_counting)].shape[
+                0] if 'psg9_r_codes_for_counting' in globals() else 0
+        else:
+            metrics_data['total_severe_unresolved_incidents_val'] = "N/A"
+            metrics_data['total_severe_unresolved_psg9_incidents_val'] = "N/A"
+        metrics_data['total_month'] = total_month
+        df_freq = df_filtered['Incident'].value_counts().reset_index()
+        df_freq.columns = ['Incident', 'count']
 
     # --- 4. PAGE CONTENT ROUTING ---
     selected_analysis = st.session_state.selected_analysis
