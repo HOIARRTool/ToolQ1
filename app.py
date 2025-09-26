@@ -22,7 +22,7 @@ try:
 except ImportError:
     genai = None
 try:
-    from weasyprint import HTML
+    #from weasyprint import HTML
 except ImportError:
     HTML = None
 
