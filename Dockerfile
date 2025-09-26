@@ -1,10 +1,10 @@
-# 1. เลือก Base Image เป็น Python 3.11
-FROM python:3.11-slim
+# 1. เปลี่ยนจาก slim เป็นเวอร์ชันเต็ม
+FROM python:3.11
 
 # 2. ตั้งค่า Working Directory ภายใน Container
 WORKDIR /app
 
-# 3. ติดตั้งโปรแกรมเสริมที่จำเป็น (เพิ่ม Dependencies ของ WeasyPrint เข้าไป)
+# 3. ติดตั้งโปรแกรมเสริมที่จำเป็น
 RUN apt-get update && apt-get install -y \
     cmake \
     build-essential \
