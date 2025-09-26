@@ -447,7 +447,7 @@ def get_consultation_response(incident_description: str) -> str:
     """
 
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         response = model.generate_content(master_prompt)
         return response.text
     except Exception as e:
