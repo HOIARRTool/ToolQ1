@@ -1,30 +1,36 @@
-# 1. เปลี่ยนจาก slim เป็นเวอร์ชันเต็ม
-FROM python:3.11
+# 1. Start from a full, stable Debian base image
+FROM debian:bullseye
 
-# 2. ตั้งค่า Working Directory ภายใน Container
-WORKDIR /app
+# 2. Set environment variables to prevent interactive prompts
+ENV PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive
 
-# 3. ติดตั้งโปรแกรมเสริมที่จำเป็น
+# 3. Install Python 3, pip, and all necessary system dependencies for your app
 RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    git \
     cmake \
     build-essential \
     libpango-1.0-0 \
-    libharfbuzz0 \
     libpangoft2-1.0-0 \
-    libgdk-pixbuf2.0-0 \
+    libgdk-pixbuf-2.0-0 \
+    libffi-dev \
+    shared-mime-info \
     && rm -rf /var/lib/apt/lists/*
 
-# 4. คัดลอกไฟล์ requirements.txt เข้าไปก่อน
+# 4. Set the working directory
+WORKDIR /app
+
+# 5. Copy and install Python requirements
 COPY requirements.txt ./
+RUN pip3 install --no-cache-dir -r requirements.txt
 
-# 5. ติดตั้ง Python libraries ทั้งหมด
-RUN pip install --no-cache-dir -r requirements.txt
-
-# 6. คัดลอกไฟล์โค้ดทั้งหมดที่เหลือเข้าไป
+# 6. Copy the rest of the application's code
 COPY . .
 
-# 7. เปิด Port 8080
+# 7. Expose the port
 EXPOSE 8080
 
-# 8. คำสั่งสำหรับรันแอป Streamlit
+# 8. Define the command to run the app using python3
 CMD ["streamlit", "run", "app.py", "--server.port", "8080", "--server.headless", "true", "--server.enableCORS", "false"]
