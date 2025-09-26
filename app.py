@@ -1,6 +1,38 @@
 # ==============================================================================
 # IMPORT LIBRARIES
 # ==============================================================================
+import streamlit as st
+import os
+
+# --- ใส่โค้ดส่วนนี้ที่บนสุดของไฟล์ ---
+st.set_page_config(layout="wide") # ตั้งค่าพื้นฐานก่อน
+
+st.header("⚙️ DEBUGGING SECTION")
+st.info("ส่วนนี้ใช้เพื่อตรวจสอบการตั้งค่า Secret บน Render")
+
+# 1. ลองเข้าถึง st.secrets โดยตรง
+try:
+    api_key = st.secrets["GOOGLE_API_KEY"]
+    st.success("✅ พบ GOOGLE_API_KEY ใน st.secrets!")
+    # แสดง Key แค่บางส่วนเพื่อความปลอดภัย
+    st.write(f"Key: `{api_key[:4]}...{api_key[-4:]}`")
+except Exception as e:
+    st.error(f"🚨 ไม่พบ GOOGLE_API_KEY ใน st.secrets — Error: {e}")
+
+# 2. แสดง Environment Variables ทั้งหมดที่แอปมองเห็น
+st.subheader("All Environment Variables visible to this app:")
+# แปลงเป็น dict เพื่อให้แสดงผลสวยงาม
+env_vars = dict(os.environ)
+st.json(env_vars)
+
+st.markdown("---")
+# --- สิ้นสุดส่วน Debug ---
+
+
+# ...ตามด้วยโค้ดเดิมของแอปคุณ...
+# from tqdm import tqdm
+# from anonymizer import load_ner_model, anonymize_text
+# ...
 from tqdm import tqdm
 from anonymizer import load_ner_model, anonymize_text
 import streamlit as st
