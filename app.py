@@ -21,10 +21,6 @@ try:
     import google.generativeai as genai
 except ImportError:
     genai = None
-try:
-    #from weasyprint import HTML
-except ImportError:
-    HTML = None
 
 # ==============================================================================
 # --- 1. การตั้งค่าและตัวแปรหลัก ---
@@ -638,14 +634,6 @@ def prioritize_incidents_nb_logit_v2(_df: pd.DataFrame,
     ]
     out = out[cols].sort_values('Priority_Score', ascending=False).reset_index(drop=True)
     return out
-
-def generate_executive_summary_pdf(df_filtered, metrics_data, total_month, df_freq, min_date_str, max_date_str):
-    """
-    สร้างไฟล์ PDF จากข้อมูลสรุปสำหรับผู้บริหาร (เวอร์ชันสมบูรณ์ 8 หัวข้อ)
-    """
-    if HTML is None:
-        st.error("กรุณาติดตั้ง WeasyPrint เพื่อใช้งานฟังก์ชันนี้: pip install weasyprint")
-        return None
 
     # --- เตรียมข้อมูลสำหรับแต่ละส่วน ---
 
@@ -2562,28 +2550,6 @@ def display_executive_dashboard():
             )
         else:
             st.info("ไม่มีข้อมูลเพียงพอสำหรับวิเคราะห์ความเสี่ยงเรื้อรัง")
-
-        st.markdown("---")
-        st.subheader("ดาวน์โหลดรายงานสรุปเป็นไฟล์ PDF")
-
-        if st.button("สร้างไฟล์ PDF สำหรับดาวน์โหลด"):
-            with st.spinner("กำลังสร้าง PDF... (อาจใช้เวลาสักครู่)"):
-                # ✅ เรียกใช้ฟังก์ชันเวอร์ชันใหม่ โดยส่งข้อมูลที่จำเป็นทั้งหมดเข้าไป
-                pdf_file = generate_executive_summary_pdf(
-                    df_filtered=df_filtered,
-                    metrics_data=metrics_data,
-                    total_month=total_month,
-                    df_freq=df_freq,
-                    min_date_str=min_date_str,
-                    max_date_str=max_date_str
-                )
-
-                st.download_button(
-                    label="📥 ดาวน์โหลด PDF ที่สร้างเสร็จแล้ว",
-                    data=pdf_file,
-                    file_name=f"Executive_Summary_{date.today().strftime('%Y-%m-%d')}.pdf",
-                    mime="application/pdf"
-                )
 
     elif selected_analysis == "RCA Helpdesk (AI Assistant)":
         st.markdown("<h4 style='color: #001f3f;'>AI Assistant: ที่ปรึกษาเคสอุบัติการณ์</h4>", unsafe_allow_html=True)
