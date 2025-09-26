@@ -16,7 +16,7 @@ def load_ner_model():
             "token-classification",
             model="loolootech/no-name-ner-th",
             device=-1,
-            token=st.secrets.get("HUGGING_FACE_TOKEN") # ดึง Token จาก secrets
+            token=os.environ.get("HUGGING_FACE_TOKEN") # ดึง Token จาก secrets
         )
         print("NER model loaded successfully.")
         return model
