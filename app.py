@@ -34,7 +34,7 @@ except ImportError:
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 PERSISTED_DATA_PATH = DATA_DIR / "processed_incident_data.parquet"
-ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "admin1234")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin1234")
 
 # ==============================================================================
 # PAGE CONFIGURATION
@@ -2564,7 +2564,7 @@ def display_executive_dashboard():
         AI_IS_CONFIGURED = False
         if genai:
             try:
-                genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+                genai.configure(api_key=os.environ.get["GOOGLE_API_KEY"])
                 AI_IS_CONFIGURED = True
             except Exception as e:
                 st.error(f"⚠️ ไม่สามารถตั้งค่า AI Assistant ได้: {e}")
