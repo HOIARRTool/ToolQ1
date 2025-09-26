@@ -4,6 +4,12 @@
 from tqdm import tqdm
 from anonymizer import load_ner_model, anonymize_text
 import streamlit as st
+import os # Make sure os is imported
+# --- DEBUGGING CODE START ---
+st.write("--- App Environment Variables ---")
+st.write(dict(os.environ))
+st.write("--- End of Environment Variables ---")
+# --- DEBUGGING CODE END ---
 import pandas as pd
 from streamlit_modal import Modal
 from ai_assistant import get_consultation_response
