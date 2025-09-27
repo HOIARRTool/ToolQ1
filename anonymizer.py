@@ -49,27 +49,41 @@ def load_ner_model():
         st.error(f"เกิดข้อผิดพลาดร้ายแรงในการโหลด NER model: {e}")
         return None
 
+# in anonymizer.py
+import re # ตรวจสอบว่ามี import re อยู่บนสุดของไฟล์
+
 def anonymize_text(text, ner_model):
-    """Anonymizes text by replacing identified entities with placeholders."""
-    if not ner_model:
-        return "Error: NER model is not available."
-    
-    # --- START: เพิ่มส่วนตรวจสอบข้อมูล ---
-    # 1. ตรวจสอบว่าข้อมูลที่รับเข้ามาเป็นข้อความ (string) หรือไม่
-    # 2. ตรวจสอบว่าเป็นข้อความว่างๆ หรือมีแต่ช่องว่างหรือไม่
-    # ถ้าไม่ใช่ข้อความ หรือเป็นข้อความว่างๆ ให้ส่งค่านั้นกลับไปเลยโดยไม่ต้องประมวลผล
+    """
+    Anonymizes text by first applying rules (Regex for HN) and then using the NER model.
+    """
     if not isinstance(text, str) or not text.strip():
         return text
-    # --- END: สิ้นสุดส่วนตรวจสอบข้อมูล ---
+
+    # --- START: เพิ่มส่วนจัดการ HN ด้วย Regex ---
+    # 1. สร้างรูปแบบเพื่อค้นหา "HN" ตามด้วยตัวเลข 1 ตัวขึ้นไป
+    # \b คือการระบุขอบเขตของคำ เพื่อไม่ให้ไปกระทบคำอื่น เช่น "JOHN"
+    hn_pattern = r'\bHN\d+\b' 
+    
+    # 2. ค้นหาและแทนที่ HN ทั้งหมดในข้อความด้วย [HN_NUMBER]
+    anonymized_text = re.sub(hn_pattern, '[HN_NUMBER]', text, flags=re.IGNORECASE)
+    # --- END: สิ้นสุดส่วนของ Regex ---
+
+    if not ner_model:
+        # ถ้าไม่มีโมเดล ก็ยังส่งผลลัพธ์จากการปกปิด HN กลับไปได้
+        return anonymized_text 
 
     try:
-        ner_results = ner_model(text)
-        anonymized_text = text
+        # 3. ส่งข้อความที่ปกปิด HN แล้ว ไปให้โมเดล AI ประมวลผลต่อ
+        ner_results = ner_model(anonymized_text)
+        
+        # Process results from last to first to keep indices valid
         for entity in sorted(ner_results, key=lambda x: x['start'], reverse=True):
             start, end = entity['start'], entity['end']
             entity_label = f"[{entity['entity_group']}]"
             anonymized_text = anonymized_text[:start] + entity_label + anonymized_text[end:]
+            
         return anonymized_text
+        
     except Exception as e:
-        print(f"Error during anonymization for text: '{text[:100]}...' | Error: {e}")
+        print(f"Error during NER anonymization for text: '{text[:100]}...' | Error: {e}")
         return f"PYTHON ERROR: {e}"
