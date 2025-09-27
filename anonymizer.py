@@ -71,4 +71,4 @@ def anonymize_text(text, ner_model):
         return anonymized_text
     except Exception as e:
         print(f"Error during anonymization for text: '{text[:100]}...' | Error: {e}")
-        return "Error during text processing."
+        return f"PYTHON ERROR: {e}"
