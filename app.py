@@ -3,35 +3,7 @@
 # ==============================================================================
 import streamlit as st
 import os
-
-# --- ใส่โค้ดส่วนนี้ที่บนสุดของไฟล์ ---
 st.set_page_config(layout="wide") 
-
-st.header("⚙️ DEBUGGING SECTION (v2)")
-st.info("ตรวจสอบว่า os.environ.get สามารถอ่านค่าจาก Render ได้หรือไม่")
-
-# 1. ลองดึงค่า GOOGLE_API_KEY โดยตรงด้วย os.environ.get
-key_from_os = os.environ.get("GOOGLE_API_KEY")
-
-if key_from_os:
-    st.success("✅ พบ GOOGLE_API_KEY จาก os.environ.get!")
-    # แสดง Key แค่บางส่วนเพื่อความปลอดภัย
-    st.write(f"Key: `{key_from_os[:4]}...{key_from_os[-4:]}`")
-else:
-    st.error("🚨 ไม่พบ GOOGLE_API_KEY ใน Environment Variables ของ Render")
-    st.warning("กรุณาตรวจสอบการตั้งค่า Environment Variables บน Dashboard ของ Render อีกครั้ง")
-
-# 2. แสดง Environment Variables ทั้งหมดที่แอปมองเห็น (ยังคงมีประโยชน์มาก)
-st.subheader("All Environment Variables visible to this app:")
-env_vars = dict(os.environ)
-if not env_vars:
-    st.warning("ไม่พบ Environment Variables ใดๆ เลย")
-else:
-    st.json(env_vars)
-
-st.markdown("---")
-# --- สิ้นสุดส่วน Debug ---
-
 # from tqdm import tqdm
 # from anonymizer import load_ner_model, anonymize_text
 # ...
