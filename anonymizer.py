@@ -3,25 +3,30 @@ import os
 import streamlit as st
 from transformers import pipeline
 import re
+from pathlib import Path
 
-# ใช้ @st.cache_resource เพื่อให้แน่ใจว่าโมเดลจะถูกโหลดแค่ครั้งเดียว
-# ซึ่งจะช่วยให้แอปทำงานเร็วขึ้นมากหลังจากการรันครั้งแรก
 @st.cache_resource
 def load_ner_model():
     """Loads the NER pipeline model and caches it."""
-    print("Loading NER model for the first time...")
+    print("Attempting to load NER model from local path...")
+    
     try:
-        # เพิ่ม argument token เข้าไป
+        # สร้างที่อยู่ของโมเดลแบบเต็ม (Absolute Path)
+        # Path(__file__).parent จะได้ที่อยู่ของโฟลเดอร์ที่ไฟล์ anonymizer.py นี้อยู่
+        # ซึ่งก็ควรจะเป็นโฟลเดอร์หลักของโปรเจกต์
+        model_path = Path(__file__).parent / "models" / "no-name-ner-th"
+
         model = pipeline(
             "token-classification",
-            model="./models/no-name-ner-th", # <--- แก้เป็นพาธนี้ เพื่ออ่านจากไฟล์
+            model=model_path,  # ใช้ที่อยู่แบบเต็มที่สร้างขึ้น
             device=-1,
-            token=os.environ.get("HUGGING_FACE_TOKEN") # ดึง Token จาก secrets
+            token=os.environ.get("HUGGING_FACE_TOKEN")
         )
         print("NER model loaded successfully.")
         return model
     except Exception as e:
-        st.error(f"Failed to load NER model: {e}")
+        print(f"Error loading NER model: {e}")
+        st.error(f"เกิดข้อผิดพลาดในการโหลด NER model: {e}")
         return None
 
 # กำหนดประเภทของข้อมูลที่จะถูกแทนที่ และ Token ที่จะใช้แทน
