@@ -1195,7 +1195,10 @@ def display_executive_dashboard():
     # --- 2. การจัดการแสดงผลตามหน้าที่เลือก ---
     selected_analysis = st.session_state.selected_analysis
 
-    # ส่วนที่ไม่ต้องโหลดข้อมูล
+    # ==============================================================================
+    #  ✅ ส่วนที่ 1: หน้าที่ไม่ต้องโหลดข้อมูล
+    # ==============================================================================
+    if selected_analysis in app_functions_list:
     if selected_analysis == "RCA Helpdesk (AI Assistant)":
         st.markdown("<h4 style='color: #001f3f;'>AI Assistant: ที่ปรึกษาเคสอุบัติการณ์</h4>", unsafe_allow_html=True)
         AI_IS_CONFIGURED = False
@@ -1203,7 +1206,6 @@ def display_executive_dashboard():
         if genai:
             # 1. ดึง API Key จาก os.environ.get
             api_key = os.environ.get("GOOGLE_API_KEY")
-
             # 2. ตรวจสอบว่า Key มีค่าหรือไม่ (ไม่ใช่ค่าว่าง)
             if api_key:
                 try:
@@ -1221,10 +1223,10 @@ def display_executive_dashboard():
             st.stop()
         st.info("อธิบายรายละเอียดของอุบัติการณ์ที่เกิดขึ้น เพื่อให้ AI ช่วยให้คำปรึกษา")
         incident_description = st.text_area(
-        "กรุณาอธิบายรายละเอียดอุบัติการณ์ที่นี่:",
-        height=150,
-        placeholder="เช่น ผู้ป่วยหญิงอายุ 65 ปี...",
-        key="rca_incident_input"  
+            "กรุณาอธิบายรายละเอียดอุบัติการณ์ที่นี่:",
+            height=150,
+            placeholder="เช่น ผู้ป่วยหญิงอายุ 65 ปี เป็นโรคเบาหวาน ได้รับยา losartan แต่เกิดผื่นขึ้นทั่วตัว...",
+            key="rca_incident_input"  
         )
         if st.button("ขอคำปรึกษาจาก AI", type="primary", use_container_width=True):
             if not incident_description.strip():
@@ -1239,17 +1241,18 @@ def display_executive_dashboard():
     elif selected_analysis == "จัดการข้อมูล (Admin)":
         display_admin_page()
 
-    # ส่วนที่ต้องโหลดข้อมูล (หน้าแดชบอร์ดทั้งหมด)
-    else:
-        # --- 2.1 โหลดข้อมูล (เฉพาะส่วนนี้) ---
+    # ==============================================================================
+    #  ✅ ส่วนที่ 2: หน้าที่ต้องโหลดข้อมูล (แดชบอร์ดทั้งหมด)
+    # ==============================================================================
+    else:       
         try:
             df = pd.read_parquet(PERSISTED_DATA_PATH)
             df['Occurrence Date'] = pd.to_datetime(df['Occurrence Date'])
         except FileNotFoundError:
             st.warning("ยังไม่มีข้อมูลในระบบ กรุณาไปที่หน้า 'จัดการข้อมูล (Admin)' เพื่ออัปโหลดข้อมูล")
-            return # หยุดการทำงานของหน้านี้
+            return 
 
-        # --- 2.2 สร้าง Sidebar ส่วนที่ต้องใช้ข้อมูล ---
+        # --- สร้าง Sidebar ส่วนที่ต้องใช้ข้อมูล ---
         st.sidebar.header("Filter by Date")
         min_date_in_data = df['Occurrence Date'].min().date()
         max_date_in_data = df['Occurrence Date'].max().date()
@@ -2626,46 +2629,6 @@ def display_executive_dashboard():
             )
         else:
             st.info("ไม่มีข้อมูลเพียงพอสำหรับวิเคราะห์ความเสี่ยงเรื้อรัง")
-
-    elif selected_analysis == "RCA Helpdesk (AI Assistant)":
-        st.markdown("<h4 style='color: #001f3f;'>AI Assistant: ที่ปรึกษาเคสอุบัติการณ์</h4>", unsafe_allow_html=True)
-
-        # --- การตั้งค่า AI (ยังคงเดิม) ---
-        AI_IS_CONFIGURED = False
-        if genai:
-            try:
-                genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
-                AI_IS_CONFIGURED = True
-            except Exception as e:
-                st.error(f"⚠️ ไม่สามารถตั้งค่า AI Assistant ได้: {e}")
-        else:
-            st.error("ไม่ได้ติดตั้งไลบรารี google-generativeai")
-
-        if not AI_IS_CONFIGURED:
-            st.stop()
-
-        # --- หน้าปรึกษาเคสใหม่ (เวอร์ชันไม่มีแท็บ) ---
-        st.info("อธิบายรายละเอียดของอุบัติการณ์ที่เกิดขึ้น เพื่อให้ AI ช่วยให้คำปรึกษา")
-
-        incident_description = st.text_area(
-            "กรุณาอธิบายรายละเอียดอุบัติการณ์ที่นี่:",
-            height=250,
-            placeholder="เช่น ผู้ป่วยหญิงอายุ 65 ปี เป็นโรคเบาหวาน ได้รับยา losartan แต่เกิดผื่นขึ้นทั่วตัว แพทย์ประเมินว่าเป็นอาการแพ้ยา..."
-        )
-
-        if st.button("ขอคำปรึกษาจาก AI", type="primary", use_container_width=True):
-            if not incident_description.strip():
-                st.warning("กรุณาป้อนรายละเอียดอุบัติการณ์ก่อนครับ")
-            else:
-                with st.spinner("AI กำลังวิเคราะห์และให้คำปรึกษา..."):
-                    # เรียกใช้ฟังก์ชันที่ปรึกษา
-                    consultation = get_consultation_response(incident_description)
-                    st.markdown("---")
-                    st.markdown("### ผลการปรึกษาจาก AI:")
-                    st.markdown(consultation)
-    elif selected_analysis == "จัดการข้อมูล (Admin)":
-        # เมื่อผู้ใช้เลือกเมนูนี้ ให้เรียกฟังก์ชันหน้า Admin ขึ้นมาแสดงผล
-        display_admin_page()
 
 def main():
     page = st.query_params.get("page", "executive")
