@@ -32,15 +32,16 @@ def load_ner_model():
         tokenizer = AutoTokenizer.from_pretrained(model_path)
         model = AutoModelForTokenClassification.from_pretrained(model_path)
 
-        # 4. สร้าง pipeline จาก object ของ model และ tokenizer ที่โหลดมาแล้ว
+        # 4. สร้าง pipeline จาก object ที่โหลดมาแล้ว
         ner_pipeline = pipeline(
             "token-classification",
             model=model,
             tokenizer=tokenizer,
             device=-1,
+            aggregation_strategy="simple"  
         )
         
-        print("NER model, tokenizer, and pipeline loaded successfully from local path.")
+        print("NER pipeline created successfully with aggregation strategy.")
         return ner_pipeline
 
     except Exception as e:
