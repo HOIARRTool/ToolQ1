@@ -6,7 +6,6 @@ import os
 st.set_page_config(layout="wide") 
 # from tqdm import tqdm
 # from anonymizer import load_ner_model, anonymize_text
-# ...
 from tqdm import tqdm
 from anonymizer import load_ner_model, anonymize_text
 import streamlit as st
@@ -949,26 +948,35 @@ def display_admin_page():
     st.title("🔑 Admin: Data Upload")    
     st.header("อัปโหลดไฟล์รายงานอุบัติการณ์ (.csv หรือ .xlsx)")
     uploaded_file = st.file_uploader(...)
-        if uploaded_file:
-            with st.spinner("กำลังประมวลผลไฟล์ กรุณารอสักครู่..."):
-                df = None
-                try:
-                    uploaded_file.seek(0)
-                    df = pd.read_csv(uploaded_file, keep_default_na=False, encoding='utf-8-sig', engine='python')
-                except Exception as e:
-                    st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์: {e}")
-                    st.stop()
-                if df.empty:
-                    st.warning("ไฟล์ที่อัปโหลดไม่มีข้อมูล")
-                    st.stop()
-                st.success("อ่านไฟล์สำเร็จ! กำลังประมวลผลข้อมูล...")
-                df.columns = [col.strip() for col in df.columns]
 
-                required_source_cols = ["รหัส: เรื่องอุบัติการณ์", "วันที่เกิดอุบัติการณ์", "ความรุนแรง"]
-                missing_source_cols = [key for key in required_source_cols if key not in df.columns]
-                if missing_source_cols:
-                    st.error(f"ไม่พบคอลัมน์ที่จำเป็นในไฟล์: {', '.join(missing_source_cols)}")
-                    st.stop()
+    if uploaded_file:
+        with st.spinner("กำลังประมวลผลไฟล์ กรุณารอสักครู่..."):
+            df = None
+            try:
+                uploaded_file.seek(0)
+                df = pd.read_csv(
+                    uploaded_file,
+                    keep_default_na=False,
+                    encoding='utf-8-sig',
+                    engine='python'
+                )
+            except Exception as e:
+                st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์: {e}")
+                st.stop()
+
+            if df.empty:
+                st.warning("ไฟล์ที่อัปโหลดไม่มีข้อมูล")
+                st.stop()
+
+            st.success("อ่านไฟล์สำเร็จ! กำลังประมวลผลข้อมูล...")
+            df.columns = [col.strip() for col in df.columns]
+
+            required_source_cols = ["รหัส: เรื่องอุบัติการณ์", "วันที่เกิดอุบัติการณ์", "ความรุนแรง"]
+            missing_source_cols = [key for key in required_source_cols if key not in df.columns]
+            if missing_source_cols:
+                st.error(f"ไม่พบคอลัมน์ที่จำเป็นในไฟล์: {', '.join(missing_source_cols)}")
+                st.stop()
+
 
                 df.rename(columns={"วันที่เกิดอุบัติการณ์": "Occurrence Date", "ความรุนแรง": "Impact"}, inplace=True)
 
