@@ -34,7 +34,7 @@ except ImportError:
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 PERSISTED_DATA_PATH = DATA_DIR / "processed_incident_data.parquet"
-
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin1234")
 # ==============================================================================
 # PAGE CONFIGURATION
 # ==============================================================================
@@ -945,37 +945,33 @@ colors2 = np.array([["#e1f5fe", "#f6c8b6", "#dd191d", "#dd191d", "#dd191d", "#dd
 # โครงสร้างหลักของโปรแกรม แบ่งการทำงานออกเป็นส่วนๆ คือหน้าสำหรับผู้ดูแล และหน้าแดชบอร์ด
 # ==============================================================================
 def display_admin_page():
-    st.title("🔑 Admin: Data Upload")    
-    st.header("อัปโหลดไฟล์รายงานอุบัติการณ์ (.csv หรือ .xlsx)")
-    uploaded_file = st.file_uploader(...)
+    st.title("🔑 Admin: Data Upload")
+    st.warning("ส่วนนี้สำหรับผู้ดูแลระบบเท่านั้น")
+    password = st.text_input("กรุณาใส่รหัสผ่าน:", type="password")
+    if password == ADMIN_PASSWORD:
+        st.success("เข้าสู่ระบบสำเร็จ!")
+        st.header("อัปโหลดไฟล์รายงานอุบัติการณ์ (.csv)")
+        uploaded_file = st.file_uploader("เลือกไฟล์ของคุณที่นี่:", type=[".csv"])
+        if uploaded_file:
+            with st.spinner("กำลังประมวลผลไฟล์ กรุณารอสักครู่..."):
+                df = None
+                try:
+                    uploaded_file.seek(0)
+                    df = pd.read_csv(uploaded_file, keep_default_na=False, encoding='utf-8-sig', engine='python')
+                except Exception as e:
+                    st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์: {e}")
+                    st.stop()
+                if df.empty:
+                    st.warning("ไฟล์ที่อัปโหลดไม่มีข้อมูล")
+                    st.stop()
+                st.success("อ่านไฟล์สำเร็จ! กำลังประมวลผลข้อมูล...")
+                df.columns = [col.strip() for col in df.columns]
 
-    if uploaded_file:
-        with st.spinner("กำลังประมวลผลไฟล์ กรุณารอสักครู่..."):
-            df = None
-            try:
-                uploaded_file.seek(0)
-                df = pd.read_csv(
-                    uploaded_file,
-                    keep_default_na=False,
-                    encoding='utf-8-sig',
-                    engine='python'
-                )
-            except Exception as e:
-                st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์: {e}")
-                st.stop()
-
-            if df.empty:
-                st.warning("ไฟล์ที่อัปโหลดไม่มีข้อมูล")
-                st.stop()
-
-            st.success("อ่านไฟล์สำเร็จ! กำลังประมวลผลข้อมูล...")
-            df.columns = [col.strip() for col in df.columns]
-
-            required_source_cols = ["รหัส: เรื่องอุบัติการณ์", "วันที่เกิดอุบัติการณ์", "ความรุนแรง"]
-            missing_source_cols = [key for key in required_source_cols if key not in df.columns]
-            if missing_source_cols:
-                st.error(f"ไม่พบคอลัมน์ที่จำเป็นในไฟล์: {', '.join(missing_source_cols)}")
-                st.stop()
+                required_source_cols = ["รหัส: เรื่องอุบัติการณ์", "วันที่เกิดอุบัติการณ์", "ความรุนแรง"]
+                missing_source_cols = [key for key in required_source_cols if key not in df.columns]
+                if missing_source_cols:
+                    st.error(f"ไม่พบคอลัมน์ที่จำเป็นในไฟล์: {', '.join(missing_source_cols)}")
+                    st.stop()
 
 
                 df.rename(columns={"วันที่เกิดอุบัติการณ์": "Occurrence Date", "ความรุนแรง": "Impact"}, inplace=True)
