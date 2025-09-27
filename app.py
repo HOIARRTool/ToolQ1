@@ -1221,9 +1221,10 @@ def display_executive_dashboard():
             st.stop()
         st.info("อธิบายรายละเอียดของอุบัติการณ์ที่เกิดขึ้น เพื่อให้ AI ช่วยให้คำปรึกษา")
         incident_description = st.text_area(
-            "กรุณาอธิบายรายละเอียดอุบัติการณ์ที่นี่:",
-            height=250,
-            placeholder="เช่น ผู้ป่วยหญิงอายุ 65 ปี เป็นโรคเบาหวาน ได้รับยา losartan แต่เกิดผื่นขึ้นทั่วตัว แพทย์ประเมินว่าเป็นอาการแพ้ยา..."
+        "กรุณาอธิบายรายละเอียดอุบัติการณ์ที่นี่:",
+        height=150,
+        placeholder="เช่น ผู้ป่วยหญิงอายุ 65 ปี...",
+        key="rca_incident_input"  
         )
         if st.button("ขอคำปรึกษาจาก AI", type="primary", use_container_width=True):
             if not incident_description.strip():
