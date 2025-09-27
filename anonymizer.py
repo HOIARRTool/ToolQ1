@@ -52,15 +52,23 @@ def anonymize_text(text, ner_model):
     """Anonymizes text by replacing identified entities with placeholders."""
     if not ner_model:
         return "Error: NER model is not available."
+    
+    # --- START: เพิ่มส่วนตรวจสอบข้อมูล ---
+    # 1. ตรวจสอบว่าข้อมูลที่รับเข้ามาเป็นข้อความ (string) หรือไม่
+    # 2. ตรวจสอบว่าเป็นข้อความว่างๆ หรือมีแต่ช่องว่างหรือไม่
+    # ถ้าไม่ใช่ข้อความ หรือเป็นข้อความว่างๆ ให้ส่งค่านั้นกลับไปเลยโดยไม่ต้องประมวลผล
+    if not isinstance(text, str) or not text.strip():
+        return text
+    # --- END: สิ้นสุดส่วนตรวจสอบข้อมูล ---
+
     try:
         ner_results = ner_model(text)
         anonymized_text = text
-        # Process results from last to first to keep indices valid
         for entity in sorted(ner_results, key=lambda x: x['start'], reverse=True):
             start, end = entity['start'], entity['end']
             entity_label = f"[{entity['entity_group']}]"
             anonymized_text = anonymized_text[:start] + entity_label + anonymized_text[end:]
         return anonymized_text
     except Exception as e:
-        print(f"Error during anonymization: {e}")
+        print(f"Error during anonymization for text: '{text[:100]}...' | Error: {e}")
         return "Error during text processing."
