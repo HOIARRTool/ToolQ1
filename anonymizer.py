@@ -14,7 +14,7 @@ def load_ner_model():
         # เพิ่ม argument token เข้าไป
         model = pipeline(
             "token-classification",
-            model="loolootech/no-name-ner-th",
+            model="./models/no-name-ner-th", # <--- แก้เป็นพาธนี้ เพื่ออ่านจากไฟล์
             device=-1,
             token=os.environ.get("HUGGING_FACE_TOKEN") # ดึง Token จาก secrets
         )
