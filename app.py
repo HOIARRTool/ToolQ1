@@ -5,31 +5,33 @@ import streamlit as st
 import os
 
 # --- ใส่โค้ดส่วนนี้ที่บนสุดของไฟล์ ---
-st.set_page_config(layout="wide") # ตั้งค่าพื้นฐานก่อน
+st.set_page_config(layout="wide") 
 
-st.header("⚙️ DEBUGGING SECTION")
-st.info("ส่วนนี้ใช้เพื่อตรวจสอบการตั้งค่า Secret บน Render")
+st.header("⚙️ DEBUGGING SECTION (v2)")
+st.info("ตรวจสอบว่า os.environ.get สามารถอ่านค่าจาก Render ได้หรือไม่")
 
-# 1. ลองเข้าถึง st.secrets โดยตรง
-try:
-    api_key = st.secrets["GOOGLE_API_KEY"]
-    st.success("✅ พบ GOOGLE_API_KEY ใน st.secrets!")
+# 1. ลองดึงค่า GOOGLE_API_KEY โดยตรงด้วย os.environ.get
+key_from_os = os.environ.get("GOOGLE_API_KEY")
+
+if key_from_os:
+    st.success("✅ พบ GOOGLE_API_KEY จาก os.environ.get!")
     # แสดง Key แค่บางส่วนเพื่อความปลอดภัย
-    st.write(f"Key: `{api_key[:4]}...{api_key[-4:]}`")
-except Exception as e:
-    st.error(f"🚨 ไม่พบ GOOGLE_API_KEY ใน st.secrets — Error: {e}")
+    st.write(f"Key: `{key_from_os[:4]}...{key_from_os[-4:]}`")
+else:
+    st.error("🚨 ไม่พบ GOOGLE_API_KEY ใน Environment Variables ของ Render")
+    st.warning("กรุณาตรวจสอบการตั้งค่า Environment Variables บน Dashboard ของ Render อีกครั้ง")
 
-# 2. แสดง Environment Variables ทั้งหมดที่แอปมองเห็น
+# 2. แสดง Environment Variables ทั้งหมดที่แอปมองเห็น (ยังคงมีประโยชน์มาก)
 st.subheader("All Environment Variables visible to this app:")
-# แปลงเป็น dict เพื่อให้แสดงผลสวยงาม
 env_vars = dict(os.environ)
-st.json(env_vars)
+if not env_vars:
+    st.warning("ไม่พบ Environment Variables ใดๆ เลย")
+else:
+    st.json(env_vars)
 
 st.markdown("---")
 # --- สิ้นสุดส่วน Debug ---
 
-
-# ...ตามด้วยโค้ดเดิมของแอปคุณ...
 # from tqdm import tqdm
 # from anonymizer import load_ner_model, anonymize_text
 # ...
@@ -1197,14 +1199,24 @@ def display_executive_dashboard():
     if selected_analysis == "RCA Helpdesk (AI Assistant)":
         st.markdown("<h4 style='color: #001f3f;'>AI Assistant: ที่ปรึกษาเคสอุบัติการณ์</h4>", unsafe_allow_html=True)
         AI_IS_CONFIGURED = False
+        
         if genai:
-            try:
-                genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-                AI_IS_CONFIGURED = True
-            except Exception as e:
-                st.error(f"⚠️ ไม่สามารถตั้งค่า AI Assistant ได้: {e}")
+            # 1. ดึง API Key จาก os.environ.get
+            api_key = os.environ.get("GOOGLE_API_KEY")
+
+            # 2. ตรวจสอบว่า Key มีค่าหรือไม่ (ไม่ใช่ค่าว่าง)
+            if api_key:
+                try:
+                    # 3. ถ้ามี Key, ให้นำไปใช้ตั้งค่า
+                    genai.configure(api_key=api_key)
+                    AI_IS_CONFIGURED = True
+                except Exception as e:
+                    # กรณีที่ Key อาจมีอยู่ แต่ไม่ถูกต้อง
+                    st.error(f"⚠️ เกิดข้อผิดพลาดในการตั้งค่า AI Assistant: {e}")
         else:
-            st.error("ไม่ได้ติดตั้งไลบรารี google-generativeai")
+                # 4. กรณีที่หา Key ไม่เจอใน Environment Variables
+            st.error("⚠️ ไม่สามารถตั้งค่า AI Assistant ได้: ไม่พบ 'GOOGLE_API_KEY' ใน Environment Variables")
+
         if not AI_IS_CONFIGURED:
             st.stop()
         st.info("อธิบายรายละเอียดของอุบัติการณ์ที่เกิดขึ้น เพื่อให้ AI ช่วยให้คำปรึกษา")
