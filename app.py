@@ -2633,7 +2633,7 @@ def display_executive_dashboard():
         AI_IS_CONFIGURED = False
         if genai:
             try:
-                genai.configure(api_key=os.environ.get["GOOGLE_API_KEY"])
+                genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
                 AI_IS_CONFIGURED = True
             except Exception as e:
                 st.error(f"⚠️ ไม่สามารถตั้งค่า AI Assistant ได้: {e}")
