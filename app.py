@@ -6,7 +6,6 @@ import os
 st.set_page_config(layout="wide") 
 # from tqdm import tqdm
 # from anonymizer import load_ner_model, anonymize_text
-# ...
 from tqdm import tqdm
 from anonymizer import load_ner_model, anonymize_text
 import streamlit as st
@@ -36,7 +35,6 @@ DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 PERSISTED_DATA_PATH = DATA_DIR / "processed_incident_data.parquet"
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin1234")
-
 # ==============================================================================
 # PAGE CONFIGURATION
 # ==============================================================================
@@ -952,8 +950,8 @@ def display_admin_page():
     password = st.text_input("กรุณาใส่รหัสผ่าน:", type="password")
     if password == ADMIN_PASSWORD:
         st.success("เข้าสู่ระบบสำเร็จ!")
-        st.header("อัปโหลดไฟล์รายงานอุบัติการณ์ (.csv หรือ .xlsx)")
-        uploaded_file = st.file_uploader("เลือกไฟล์ของคุณที่นี่:", type=[".xlsx", ".csv"])
+        st.header("อัปโหลดไฟล์รายงานอุบัติการณ์ (.csv)")
+        uploaded_file = st.file_uploader("เลือกไฟล์ของคุณที่นี่:", type=[".csv"])
         if uploaded_file:
             with st.spinner("กำลังประมวลผลไฟล์ กรุณารอสักครู่..."):
                 df = None
@@ -974,6 +972,7 @@ def display_admin_page():
                 if missing_source_cols:
                     st.error(f"ไม่พบคอลัมน์ที่จำเป็นในไฟล์: {', '.join(missing_source_cols)}")
                     st.stop()
+
 
                 df.rename(columns={"วันที่เกิดอุบัติการณ์": "Occurrence Date", "ความรุนแรง": "Impact"}, inplace=True)
 
