@@ -4,10 +4,8 @@
 import streamlit as st
 import os
 st.set_page_config(layout="wide") 
-# from tqdm import tqdm
-# from anonymizer import load_ner_model, anonymize_text
 from tqdm import tqdm
-from anonymizer import load_ner_model, anonymize_text
+from anonymizer import load_ner_model, anonymize_column
 import streamlit as st
 import os # Make sure os is imported
 import pandas as pd
@@ -946,160 +944,147 @@ colors2 = np.array([["#e1f5fe", "#f6c8b6", "#dd191d", "#dd191d", "#dd191d", "#dd
 # ==============================================================================
 def display_admin_page():
     st.title("🔑 Admin: Data Upload")
-    st.warning("ส่วนนี้สำหรับผู้ดูแลระบบเท่านั้น")
-    password = st.text_input("กรุณาใส่รหัสผ่าน:", type="password")
-    if password == ADMIN_PASSWORD:
-        st.success("เข้าสู่ระบบสำเร็จ!")
-        st.header("อัปโหลดไฟล์รายงานอุบัติการณ์ (.csv)")
-        uploaded_file = st.file_uploader("เลือกไฟล์ของคุณที่นี่:", type=[".csv"])
-        if uploaded_file:
-            with st.spinner("กำลังประมวลผลไฟล์ กรุณารอสักครู่..."):
-                df = None
-                try:
-                    uploaded_file.seek(0)
-                    df = pd.read_csv(uploaded_file, keep_default_na=False, encoding='utf-8-sig', engine='python')
-                except Exception as e:
-                    st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์: {e}")
-                    st.stop()
-                if df.empty:
-                    st.warning("ไฟล์ที่อัปโหลดไม่มีข้อมูล")
-                    st.stop()
-                st.success("อ่านไฟล์สำเร็จ! กำลังประมวลผลข้อมูล...")
-                df.columns = [col.strip() for col in df.columns]
+    st.header("อัปโหลดไฟล์รายงานอุบัติการณ์ (.csv)")
 
-                required_source_cols = ["รหัส: เรื่องอุบัติการณ์", "วันที่เกิดอุบัติการณ์", "ความรุนแรง"]
-                missing_source_cols = [key for key in required_source_cols if key not in df.columns]
-                if missing_source_cols:
-                    st.error(f"ไม่พบคอลัมน์ที่จำเป็นในไฟล์: {', '.join(missing_source_cols)}")
-                    st.stop()
+    # คำแนะนำ HRMS (ตัวใหญ่ขึ้น + bullet)
+    st.markdown("""
+    <div style="font-size:16px">
+      <ul>
+        <li>เข้าสู่ระบบ <b>HRMS</b> ด้วยสิทธิ์ <b>Admin</b></li>
+        <li>ไปที่เมนู <b>‘รายงาน’</b></li>
+        <li>เลือก <b>‘การส่งออกข้อมูลรายงานอุบัติการณ์ขององค์กร (Excel File)’</b></li>
+        <li>ดาวน์โหลดไฟล์และบันทึกเป็น <b>.csv</b></li>
+        <li>นำไฟล์ที่ได้มาอัปโหลดที่นี่</li>
+      </ul>
+    </div>
+    """, unsafe_allow_html=True)
 
+    uploaded_file = st.file_uploader("เลือกไฟล์ของคุณที่นี่:", type=[".csv"])
+    if not uploaded_file:
+        return
 
-                df.rename(columns={"วันที่เกิดอุบัติการณ์": "Occurrence Date", "ความรุนแรง": "Impact"}, inplace=True)
+    with st.spinner("กำลังประมวลผลไฟล์ กรุณารอสักครู่..."):
+        # ---------------- อ่านไฟล์ ----------------
+        try:
+            uploaded_file.seek(0)
+            df = pd.read_csv(uploaded_file, keep_default_na=False, encoding='utf-8-sig', engine='python')
+        except Exception as e:
+            st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์: {e}")
+            st.stop()
 
-                df['Incident'] = df['รหัส: เรื่องอุบัติการณ์'].astype(str).str.split(':', n=1).str[0].str.strip()
-                df = df[df['Incident'] != ''].copy()
-                if df.empty:
-                    st.error("ไม่พบข้อมูลที่มี 'รหัสอุบัติการณ์' ที่ถูกต้องเลยหลังการกรอง")
-                    st.stop()
+        if df.empty:
+            st.warning("ไฟล์ที่อัปโหลดไม่มีข้อมูล")
+            st.stop()
 
-                df['ชื่ออุบัติการณ์ความเสี่ยง'] = df['รหัส: เรื่องอุบัติการณ์'].astype(str).str.split(':', n=1).str[
-                    1].str.strip()
-                df['รหัส'] = df['Incident'].astype(str).str.slice(0, 6).str.strip()
-                if 'สถานะ' in df.columns:
-                    df['Resulting Actions'] = df['สถานะ'].apply(lambda x: 'None' if 'รอแก้ไข' in str(x) else str(x))
-                else:
-                    df['Resulting Actions'] = 'N/A'
+        st.success("อ่านไฟล์สำเร็จ! กำลังประมวลผลข้อมูล...")
+        df.columns = [col.strip() for col in df.columns]
 
-                df.replace('', 'None', inplace=True)
-                df = df.fillna('None')
-                df['Impact'] = df['Impact'].astype(str).str.strip()
+        # ---------------- ตรวจคอลัมน์จำเป็น ----------------
+        required_source_cols = ["รหัส: เรื่องอุบัติการณ์", "วันที่เกิดอุบัติการณ์", "ความรุนแรง"]
+        missing_source_cols = [key for key in required_source_cols if key not in df.columns]
+        if missing_source_cols:
+            st.error(f"ไม่พบคอลัมน์ที่จำเป็นในไฟล์: {', '.join(missing_source_cols)}")
+            st.stop()
 
-                if not df2.empty:
-                    df = pd.merge(df, df2[['รหัส', 'กลุ่ม', 'หมวด']], on='รหัส', how='left')
-                for col in ["กลุ่ม", "หมวด"]:
-                    if col not in df.columns:
-                        df[col] = 'N/A'
-                    else:
-                        df[col].fillna('N/A', inplace=True)
+        # ---------------- จัดรูปคอลัมน์หลัก ----------------
+        df.rename(columns={"วันที่เกิดอุบัติการณ์": "Occurrence Date", "ความรุนแรง": "Impact"}, inplace=True)
 
-                df['Occurrence Date'] = pd.to_datetime(df['Occurrence Date'], dayfirst=True, errors='coerce')
+        df['Incident'] = df['รหัส: เรื่องอุบัติการณ์'].astype(str).str.split(':', n=1).str[0].str.strip()
+        df = df[df['Incident'] != ''].copy()
+        if df.empty:
+            st.error("ไม่พบข้อมูลที่มี 'รหัสอุบัติการณ์' ที่ถูกต้องเลยหลังการกรอง")
+            st.stop()
 
-                invalid_dates = df['Occurrence Date'].isna().sum()
-                if invalid_dates > 0:
-                    st.warning(f"ตรวจพบและข้าม {invalid_dates} แถวที่มีรูปแบบ 'วันที่' ไม่ถูกต้อง")
+        df['ชื่ออุบัติการณ์ความเสี่ยง'] = df['รหัส: เรื่องอุบัติการณ์'].astype(str).str.split(':', n=1).str[1].str.strip()
+        df['รหัส'] = df['Incident'].astype(str).str.slice(0, 6).str.strip()
+        if 'สถานะ' in df.columns:
+            df['Resulting Actions'] = df['สถานะ'].apply(lambda x: 'None' if 'รอแก้ไข' in str(x) else str(x))
+        else:
+            df['Resulting Actions'] = 'N/A'
 
-                df.dropna(subset=['Occurrence Date'], inplace=True)
-                if df.empty:
-                    st.error("ไม่พบข้อมูลที่มี 'วันที่' ที่ถูกต้องเลยหลังการกรอง")
-                    st.stop()
+        df.replace('', 'None', inplace=True)
+        df = df.fillna('None')
+        df['Impact'] = df['Impact'].astype(str).str.strip()
 
-                impact_level_map = {('A', 'B', '1'): '1', ('C', 'D', '2'): '2', ('E', 'F', '3'): '3',
-                                    ('G', 'H', '4'): '4', ('I', '5'): '5'}
+        # ---------------- เติมข้อมูล กลุ่ม/หมวด ----------------
+        if not df2.empty:
+            df = pd.merge(df, df2[['รหัส', 'กลุ่ม', 'หมวด']], on='รหัส', how='left')
+        for col in ["กลุ่ม", "หมวด"]:
+            if col not in df.columns:
+                df[col] = 'N/A'
+            else:
+                df[col].fillna('N/A', inplace=True)
 
-                def map_impact_level_func(val):
-                    s_val = str(val);
-                    for k, v in impact_level_map.items():
-                        if s_val in k: return v
-                    return 'N/A'
+        # ---------------- แปลงวันที่ ----------------
+        df['Occurrence Date'] = pd.to_datetime(df['Occurrence Date'], dayfirst=True, errors='coerce')
+        invalid_dates = df['Occurrence Date'].isna().sum()
+        if invalid_dates > 0:
+            st.warning(f"ตรวจพบและข้าม {invalid_dates} แถวที่มีรูปแบบ 'วันที่' ไม่ถูกต้อง")
 
-                df['Impact Level'] = df['Impact'].apply(map_impact_level_func)
+        df.dropna(subset=['Occurrence Date'], inplace=True)
+        if df.empty:
+            st.error("ไม่พบข้อมูลที่มี 'วันที่' ที่ถูกต้องเลยหลังการกรอง")
+            st.stop()
 
-                max_p, min_p = df['Occurrence Date'].max().to_period('M'), df['Occurrence Date'].min().to_period('M')
-                total_month_calc = max(1, (max_p.year - min_p.year) * 12 + (max_p.month - min_p.month) + 1)
+        # ---------------- Impact/Freq/Risk ----------------
+        impact_level_map = {('A', 'B', '1'): '1', ('C', 'D', '2'): '2', ('E', 'F', '3'): '3',
+                            ('G', 'H', '4'): '4', ('I', '5'): '5'}
 
-                incident_counts_map = df['Incident'].value_counts()
-                df['count'] = df['Incident'].map(incident_counts_map)
-                df['Incident Rate/mth'] = (df['count'] / total_month_calc).round(1)
+        def map_impact_level_func(val):
+            s_val = str(val)
+            for k, v in impact_level_map.items():
+                if s_val in k:
+                    return v
+            return 'N/A'
 
-                conditions_freq = [(df['Incident Rate/mth'] < 2.0), (df['Incident Rate/mth'] < 3.9),
-                                   (df['Incident Rate/mth'] < 6.9), (df['Incident Rate/mth'] < 29.9)]
-                choices_freq = ['1', '2', '3', '4']
-                df['Frequency Level'] = np.select(conditions_freq, choices_freq, default='5')
+        df['Impact Level'] = df['Impact'].apply(map_impact_level_func)
 
-                df['Risk Level'] = df.apply(
-                    lambda row: f"{row['Impact Level']}{row['Frequency Level']}" if pd.notna(row['Impact Level']) and
-                                                                                    row[
-                                                                                        'Impact Level'] != 'N/A' else 'N/A',
-                    axis=1)
-                df = pd.merge(df, risk_color_df, on='Risk Level', how='left')
-                df['Category Color'].fillna('Undefined', inplace=True)
+        max_p, min_p = df['Occurrence Date'].max().to_period('M'), df['Occurrence Date'].min().to_period('M')
+        total_month_calc = max(1, (max_p.year - min_p.year) * 12 + (max_p.month - min_p.month) + 1)
 
-                df['Incident Type'] = df['Incident'].astype(str).str[:3]
-                df['Month'] = df['Occurrence Date'].dt.month
-                df['เดือน'] = df['Month'].map(month_label)
-                df['Year'] = df['Occurrence Date'].dt.year.astype(str)
+        incident_counts_map = df['Incident'].value_counts()
+        df['count'] = df['Incident'].map(incident_counts_map)
+        df['Incident Rate/mth'] = (df['count'] / total_month_calc).round(1)
 
-                PSG9_ID_COL = 'PSG_ID'
-                if 'PSG9code_df_master' in globals() and not PSG9code_df_master.empty and PSG9_ID_COL in PSG9code_df_master.columns:
-                    standards_to_merge = PSG9code_df_master[['รหัส', PSG9_ID_COL]].copy().drop_duplicates(
-                        subset=['รหัส'])
-                    standards_to_merge['รหัส'] = standards_to_merge['รหัส'].astype(str).str.strip()
-                    df = pd.merge(df, standards_to_merge, on='รหัส', how='left')
-                    df['หมวดหมู่มาตรฐานสำคัญ'] = df[PSG9_ID_COL].map(PSG9_label_dict).fillna(
-                        "ไม่จัดอยู่ใน PSG9 Catalog")
-                else:
-                    df['หมวดหมู่มาตรฐานสำคัญ'] = "ไม่สามารถระบุ (PSG9code.xlsx ไม่ได้โหลด)"
+        conditions_freq = [(df['Incident Rate/mth'] < 2.0), (df['Incident Rate/mth'] < 3.9),
+                           (df['Incident Rate/mth'] < 6.9), (df['Incident Rate/mth'] < 29.9)]
+        choices_freq = ['1', '2', '3', '4']
+        df['Frequency Level'] = np.select(conditions_freq, choices_freq, default='5')
 
-                for col in df.select_dtypes(include=['object']).columns:
-                    df[col] = df[col].astype(str)
+        df['Risk Level'] = df.apply(
+            lambda row: f"{row['Impact Level']}{row['Frequency Level']}"
+            if pd.notna(row['Impact Level']) and row['Impact Level'] != 'N/A' else 'N/A',
+            axis=1
+        )
+        df = pd.merge(df, risk_color_df, on='Risk Level', how='left')
+        df['Category Color'].fillna('Undefined', inplace=True)
 
-                    # ==========================================================
-                    # ✨ ส่วนที่เพิ่มเข้ามา: การปกปิดข้อมูลส่วนบุคคล ✨
-                    # ==========================================================
-                    st.info("กำลังโหลดโมเดล AI สำหรับปกปิดข้อมูลส่วนบุคคล (ครั้งแรกอาจใช้เวลาสักครู่)...")
-                    ner_model = load_ner_model()
+        df['Incident Type'] = df['Incident'].astype(str).str[:3]
+        df['Month'] = df['Occurrence Date'].dt.month
+        df['เดือน'] = df['Month'].map(month_label)
+        df['Year'] = df['Occurrence Date'].dt.year.astype(str)
 
-                    if ner_model and 'รายละเอียดการเกิด' in df.columns:
-                        st.info("กำลังประมวลผลเพื่อปกปิดข้อมูลส่วนบุคคลใน 'รายละเอียดการเกิด'...")
+        # ---------------- PSG9 mapping ----------------
+        PSG9_ID_COL = 'PSG_ID'
+        if 'PSG9code_df_master' in globals() and not PSG9code_df_master.empty and PSG9_ID_COL in PSG9code_df_master.columns:
+            standards_to_merge = PSG9code_df_master[['รหัส', PSG9_ID_COL]].copy().drop_duplicates(subset=['รหัส'])
+            standards_to_merge['รหัส'] = standards_to_merge['รหัส'].astype(str).str.strip()
+            df = pd.merge(df, standards_to_merge, on='รหัส', how='left')
+            df['หมวดหมู่มาตรฐานสำคัญ'] = df[PSG9_ID_COL].map(PSG9_label_dict).fillna("ไม่จัดอยู่ใน PSG9 Catalog")
+        else:
+            df['หมวดหมู่มาตรฐานสำคัญ'] = "ไม่สามารถระบุ (PSG9code.xlsx ไม่ได้โหลด)"
 
-                        # สร้างคอลัมน์ใหม่สำหรับเก็บข้อมูลที่ปกปิดแล้ว
-                        df['รายละเอียดการเกิด_Anonymized'] = ''
+        # ---------------- Anonymize: ใช้ฟังก์ชันจาก anonymizer.py ----------------
+        ner_model = load_ner_model()
+        df = anonymize_column(df, text_col="รายละเอียดการเกิด", ner_model=ner_model,
+                              out_col="รายละเอียดการเกิด_Anonymized")
 
-                        # ใช้ tqdm เพื่อแสดง progress bar
-                        progress_bar = st.progress(0)
-                        total_rows = len(df)
-
-                        # ใช้ .apply() จะเร็วกว่าการวนลูปด้วย for
-                        # เราสร้าง lambda function เพื่อส่ง model เข้าไปใน anonymize_text
-                        df['รายละเอียดการเกิด_Anonymized'] = df['รายละเอียดการเกิด'].astype(str).apply(
-                            lambda text: anonymize_text(text, ner_model)
-                        )
-                        progress_bar.progress(1.0)  # เสร็จสิ้น
-                        st.success("ปกปิดข้อมูลส่วนบุคคลเรียบร้อยแล้ว!")
-                    else:
-                        # หากไม่มีคอลัมน์ 'รายละเอียดการเกิด' ให้สร้างคอลัมน์เปล่าไว้
-                        df['รายละเอียดการเกิด_Anonymized'] = df.get('รายละเอียดการเกิด', '')
-
-                    for col in df.select_dtypes(include=['object']).columns:
-                        df[col] = df[col].astype(str)
-
-                    # บันทึกข้อมูลลง Parquet (ตอนนี้จะมีคอลัมน์ที่ปกปิดแล้วด้วย)
-                    df.to_parquet(PERSISTED_DATA_PATH, index=False)
-                    st.success(f"ประมวลผลสำเร็จ! ข้อมูล {len(df)} รายการถูกบันทึกแล้ว")
-                    # ... สิ้นสุดฟังก์ชัน
-                df.to_parquet(PERSISTED_DATA_PATH, index=False)
-                st.success(f"ประมวลผลสำเร็จ! ข้อมูล {len(df)} รายการถูกบันทึกแล้ว")
-
+        # ---------------- บันทึกผล ----------------
+        try:
+            df.to_parquet(PERSISTED_DATA_PATH, index=False)
+            st.success(f"ประมวลผลสำเร็จ! ข้อมูล {len(df)} รายการถูกบันทึกแล้ว")
+        except Exception as e:
+            st.error(f"บันทึกข้อมูลล้มเหลว: {e}")
 
 def display_executive_dashboard():
     # --- 1. สร้าง Sidebar และเมนูเลือกหน้า ---
