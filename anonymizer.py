@@ -50,50 +50,71 @@ def load_ner_model():
         return None
 
 
-def anonymize_text(text, ner_model):
+def anonymize_text(original_text: str, ner_model):
+    """
+    ใช้โมเดล NER และ RegEx เพื่อปกปิดข้อมูลส่วนบุคคลในข้อความ
+    """
+    if not isinstance(original_text, str) or not original_text.strip():
+        return original_text
 
-    """Anonymizes text by replacing identified entities with placeholders."""
+    # ==========================================================
+    # ✨ ขั้นตอนที่ 1 (เพิ่มใหม่): ใช้ RegEx ค้นหาและแทนที่ HN ก่อน ✨
+    # ==========================================================
+    # รูปแบบ: ค้นหา HN หรือ hn, ตามด้วยเว้นวรรคหรือไม่ก็ได้ ( \s? ), ตามด้วยตัวเลข 1 ตัวขึ้นไป ( \d+ )
+    hn_pattern = r'[Hh][Nn]([\s.]?\d+|\s[a-zA-Z]{2}\d+)'
+    text_after_regex = re.sub(hn_pattern, ENTITY_TO_ANONYMIZED_TOKEN_MAP["HN"], original_text)
 
-    if not ner_model:
+    # ถ้าไม่มี ner_model ก็ให้คืนค่าหลังจากทำ RegEx ไปเลย
+    if not ner_model:
+        return text_after_regex
 
-        return "Error: NER model is not available."
+    try:
+        # ==========================================================
+        # ✨ ขั้นตอนที่ 2 (ของเดิม): ทำ NER กับข้อความที่ผ่าน RegEx มาแล้ว ✨
+        # ==========================================================
+        ner_results = ner_model(text_after_regex)
 
-    
+        if not ner_results:
+            return text_after_regex
 
-    # --- START: เพิ่มส่วนตรวจสอบข้อมูล ---
+        # 2. จัดการ Entity ที่ต่อเนื่องกัน
+        combined_entities = []
+        for entity in ner_results:
+            entity_name = re.sub(r'^[BI]-', '', entity['entity'])
+            entity['entity'] = entity_name
 
-    # 1. ตรวจสอบว่าข้อมูลที่รับเข้ามาเป็นข้อความ (string) หรือไม่
+            if (combined_entities and
+                    combined_entities[-1]['entity'] == entity_name and
+                    entity['start'] == combined_entities[-1]['end']):
+                combined_entities[-1]['word'] += entity['word']
+                combined_entities[-1]['end'] = entity['end']
+            elif (combined_entities and
+                  combined_entities[-1]['entity'] == entity_name and
+                  entity['start'] == combined_entities[-1]['end'] + 1 and
+                  text_after_regex[entity['start'] - 1].isspace()):
+                combined_entities[-1]['word'] += " " + entity['word']
+                combined_entities[-1]['end'] = entity['end']
+            else:
+                combined_entities.append(entity)
 
-    # 2. ตรวจสอบว่าเป็นข้อความว่างๆ หรือมีแต่ช่องว่างหรือไม่
+        # 3. คัดกรองเฉพาะ entity ที่เราต้องการปกปิด
+        entities_to_anonymize = [
+            e for e in combined_entities if e['entity'] in ENTITY_TO_ANONYMIZED_TOKEN_MAP
+        ]
 
-    # ถ้าไม่ใช่ข้อความ หรือเป็นข้อความว่างๆ ให้ส่งค่านั้นกลับไปเลยโดยไม่ต้องประมวลผล
+        # 4. เรียงลำดับจากท้ายมาหน้า
+        entities_to_anonymize.sort(key=lambda x: x['start'], reverse=True)
 
-    if not isinstance(text, str) or not text.strip():
+        # 5. แทนที่ข้อความ
+        anonymized_text = text_after_regex
+        for entity in entities_to_anonymize:
+            start, end = entity['start'], entity['end']
+            token = ENTITY_TO_ANONYMIZED_TOKEN_MAP.get(entity['entity'])
+            if token:
+                anonymized_text = anonymized_text[:start] + token + anonymized_text[end:]
 
-        return text
+        return anonymized_text
 
-    # --- END: สิ้นสุดส่วนตรวจสอบข้อมูล ---
-
-
-
-    try:
-
-        ner_results = ner_model(text)
-
-        anonymized_text = text
-
-        for entity in sorted(ner_results, key=lambda x: x['start'], reverse=True):
-
-            start, end = entity['start'], entity['end']
-
-            entity_label = f"[{entity['entity_group']}]"
-
-            anonymized_text = anonymized_text[:start] + entity_label + anonymized_text[end:]
-
-        return anonymized_text
-
-    except Exception as e:
-
-        print(f"Error during anonymization for text: '{text[:100]}...' | Error: {e}")
-
-        return f"PYTHON ERROR: {e}"
+    except Exception:
+        # หากเกิดข้อผิดพลาดใดๆ ให้คืนค่าข้อความที่ผ่าน RegEx แล้วไปก่อน
+        return text_after_regex
