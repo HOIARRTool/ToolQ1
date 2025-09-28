@@ -21,21 +21,21 @@ PLACEHOLDER_PATTERN = re.compile(r'\[[A-Z_]+\]')
 
 
 @st.cache_resource
-def load_ner_model():
-    """
-    Loads the NER model and tokenizer from a local path and creates the pipeline.
-    """
-    print("Attempting to load NER model from local path...")
-    try:
-        model_name = "pythainlp/thainer-corpus-v2-base-model"
-        model_folder_name = model_name.split('/')[1]
-        model_path = Path(__file__).parent / "models" / model_folder_name
+from pathlib import Path
+from huggingface_hub import snapshot_download
 
-        if not model_path.is_dir():
-            st.error(f"Error: Model directory not found at the expected path: {model_path}")
-            parent_dir_contents = list(Path(__file__).parent.glob('*'))
-            st.warning(f"Contents of the root directory: {parent_dir_contents}")
-            return None
+def load_ner_model():
+    local_dir = Path("model")
+    if not local_dir.exists() or not any(local_dir.iterdir()):
+        print("🔽 Downloading thainer-corpus-v2-base-model from Hugging Face...")
+        snapshot_download(
+            repo_id="pythainlp/thainer-corpus-v2-base-model",
+            local_dir=local_dir,
+            local_dir_use_symlinks=False
+        )
+    # จากนั้นโหลดโมเดลจาก local_dir
+    model = SomeLibrary.load(str(local_dir))
+    return model
 
         tokenizer = AutoTokenizer.from_pretrained(model_path)
         model = AutoModelForTokenClassification.from_pretrained(model_path)
