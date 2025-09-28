@@ -15,7 +15,7 @@ ENTITY_TO_ANONYMIZED_TOKEN_MAP = {
 }
 
 # ====== Regex rules ======
-HN_PATTERN = re.compile(r'(?<![0-9A-Za-zก-๙])HN[\s\.\-:]*\d{1,}', re.IGNORECASE)
+HN_PATTERN = re.compile(r'HN[\s\.\-:]*\d+', re.IGNORECASE)
 PLACEHOLDER_PATTERN = re.compile(r'\[[A-Z_]+\]')  # กันไม่ให้แทนซ้ำใน [TOKEN]
 
 
