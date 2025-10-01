@@ -1100,7 +1100,7 @@ def display_executive_dashboard():
         "Sankey: ภาพรวม", "Sankey: มาตรฐานสำคัญจำเป็นต่อความปลอดภัย 9 ข้อ",
         "สรุปอุบัติการณ์ตาม Safety Goals",
         "Persistence Risk Index", "Early Warning: อุบัติการณ์ที่มีแนวโน้มสูงขึ้น", "บทสรุปสำหรับผู้บริหาร",
-    ]
+    ] 
 
     # ตั้งค่าหน้าเริ่มต้นเป็น "RCA Helpdesk"
     if 'selected_analysis' not in st.session_state:
