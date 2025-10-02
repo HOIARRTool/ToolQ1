@@ -900,7 +900,6 @@ try:
         if 'รหัส' in allcode2024_df.columns and all(c in allcode2024_df.columns for c in ["ชื่ออุบัติการณ์ความเสี่ยง", "กลุ่ม", "หมวด"]):
             df2 = allcode2024_df[["รหัส", "ชื่ออุบัติการณ์ความเสี่ยง", "กลุ่ม", "หมวด"]].drop_duplicates().copy()
             df2['รหัส'] = df2['รหัส'].astype(str).str.strip()
-            try:
     if Path(RISK_MITIGATION_FILE_PATH).is_file():
         # โหลดข้อมูลจากไฟล์ Excel เข้าไปในตัวแปร df_mitigation
         df_mitigation = pd.read_excel(RISK_MITIGATION_FILE_PATH)
