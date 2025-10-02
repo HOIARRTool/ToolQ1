@@ -1,16 +1,11 @@
-# risk_register_assistant.py (เวอร์ชันตัด AI ออก)
-
 import pandas as pd
-
-
 def get_risk_register_consultation(
         query: str,
         df: pd.DataFrame,
         risk_mitigation_df: pd.DataFrame
 ):
     """
-    ค้นหาข้อมูลอุบัติการณ์ที่ระบุ และดึงข้อมูลที่เกี่ยวข้องออกมา
-    เวอร์ชันนี้ไม่เรียกใช้ AI (genai_model)
+    ค้นหาข้อมูลอุบัติการณ์ที่ระบุ และดึงข้อมูลที่เกี่ยวข้องออกมา    
     """
     if not query.strip():
         return {"error": "กรุณาป้อนรหัสหรือชื่ออุบัติการณ์ที่ต้องการค้นหา"}
