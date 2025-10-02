@@ -880,6 +880,7 @@ PSG9_FILE_PATH = "PSG9code.xlsx"
 SENTINEL_FILE_PATH = "Sentinel2024.xlsx"
 ALLCODE_FILE_PATH = "Code2024.xlsx"
 psg9_r_codes_for_counting = set()
+RISK_MITIGATION_FILE = "risk_mitigations.xlsx"
 sentinel_composite_keys = set()
 df2 = pd.DataFrame()
 try:
