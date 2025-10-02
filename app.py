@@ -2420,7 +2420,119 @@ def display_executive_dashboard():
                         - **Priority Score**: คะแนนรวมที่ถ่วงน้ำหนักระหว่าง 'การคาดการณ์เหตุรุนแรง', 'แนวโน้มความถี่ที่เพิ่มขึ้น', และ 'แนวโน้มสัดส่วนความรุนแรงที่เพิ่มขึ้น'
                         - **p(ถี่↑)** และ **p(รุนแรง↑)**: ค่า p-value ยิ่งน้อย (เช่น < 0.05) ยิ่งหมายความว่าแนวโน้มที่เพิ่มขึ้นนั้นมีนัยสำคัญทางสถิติ
                         """)
+    elif selected_analysis == "Risk Register Assistant":
+        st.markdown("<h4 style='color: #001f3f;'>สำหรับ Risk Owner (Risk Register Assistant)</h4>",
+                    unsafe_allow_html=True)
+        st.info("ป้อน 'รหัส' หรือ 'ชื่ออุบัติการณ์' เพื่อดูสรุปข้อมูลและมาตรการที่เกี่ยวข้อง")
 
+        # --- ส่วนรับ Input จากผู้ใช้ ---
+        query = st.text_input(
+            "ระบุรหัส หรือ คำค้นหาในชื่ออุบัติการณ์:",
+            placeholder="เช่น CPM201 หรือ Medication error",
+            key="risk_register_query"
+        )
+
+        if st.button("ค้นหาข้อมูล", type="primary", use_container_width=True):
+            if not query.strip():
+                st.warning("กรุณาป้อนรหัสหรือชื่ออุบัติการณ์ที่ต้องการค้นหา")
+            else:
+                with st.spinner("กำลังค้นหาข้อมูล..."):
+                    result = get_risk_register_consultation(
+                        query=query,
+                        df=df_filtered,
+                        risk_mitigation_df=df_mitigation
+                    )
+
+                st.markdown("---")
+
+                if "error" in result:
+                    st.error(result["error"])
+                else:
+                    # แสดงผลสรุปข้อมูล
+                    st.subheader("Result review")
+                    st.markdown(f"สรุปข้อมูลสำหรับ: {result['incident_code']} - {result['incident_name']}")
+
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("จำนวนครั้งที่เกิด", f"{result['total_occurrences']} ครั้ง")
+                    c2.metric("Impact Level สูงสุด", result['max_impact_level'])
+                    c3.metric("Frequency Level", result['frequency_level'])
+
+                    # <<< 💡 นี่คือส่วนที่แก้ไขทั้งหมด 💡 >>>
+                    with c4:
+                        st.markdown("<div style='font-size: 0.8rem; color: #555;'>Risk Level</div>",
+                                    unsafe_allow_html=True)
+
+                        # ดึงค่าที่จำเป็นสำหรับค้นหาสี
+                        il_key = str(result['max_impact_level'])
+                        fl_key = str(result['frequency_level'])
+                        category_name = result['risk_category']
+
+                        # กำหนดค่าสีตั้งต้น (เผื่อกรณีหาไม่เจอ)
+                        bg_color = '#808080'  # สีเทา
+
+                        # สร้าง dict สำหรับ map ค่า (เหมือนในหน้า Risk Matrix)
+                        impact_to_color_row = {'5': 0, '4': 1, '3': 2, '2': 3, '1': 4}
+                        freq_to_color_col = {'1': 2, '2': 3, '3': 4, '4': 5, '5': 6}
+
+                        # ค้นหาสีจาก Matrix `colors2`
+                        if il_key in impact_to_color_row and fl_key in freq_to_color_col:
+                            row_idx = impact_to_color_row[il_key]
+                            col_idx = freq_to_color_col[fl_key]
+                            bg_color = colors2[row_idx, col_idx]
+
+                        # หาค่าสีของตัวอักษรที่เหมาะสม (ขาวหรือดำ)
+                        text_color = get_text_color_for_bg(bg_color)
+
+                        # สร้างกล่องสีด้วย st.markdown
+                        st.markdown(f"""
+                            <div style="
+                                background-color: {bg_color};
+                                color: {text_color};
+                                padding: 0.75rem; 
+                                border-radius: 0.5rem;
+                                text-align: center;
+                                font-weight: bold;
+                                font-size: 1.3rem;
+                                line-height: 1.3;
+                            ">
+                                {category_name}
+                            </div>
+                            """, unsafe_allow_html=True)
+                    # <<< 💡 สิ้นสุดส่วนที่แก้ไข 💡 >>>
+
+                    st.markdown("---")
+                    # <<< 💡 ส่วนที่เอากลับมา 💡 >>>
+                    st.markdown(
+                        f"##### Review Result: พบอุบัติการณ์ทั้งหมด {result['total_occurrences']} ครั้ง ได้แก่:")
+
+                    # ดึง DataFrame ที่มีรายละเอียดกลับมาจาก result
+                    incident_details_df = result['incident_df'].sort_values(by='Occurrence Date', ascending=False)
+
+                    # วนลูปเพื่อแสดงผลแต่ละรายการ
+                    for index, row in incident_details_df.iterrows():
+                        event_date = row['Occurrence Date'].strftime('%d %B %Y, %H:%M')
+                        impact = row['Impact']
+                        impact_level = row['Impact Level']
+                        details = row.get('รายละเอียดการเกิด_Anonymized', 'ไม่มีรายละเอียด')  # .get() เพื่อความปลอดภัย
+
+                        st.markdown(f"""
+                        <div style="border-left: 4px solid #e0e0e0; padding-left: 15px; margin-bottom: 15px;">
+                            <p style="margin-bottom: 2px;">
+                                <strong>วันที่เกิดเหตุ:</strong> {event_date}<br>
+                                <strong>ความรุนแรง:</strong> {impact} (ระดับ {impact_level})
+                            </p>
+                            <p style="margin-bottom: 0; color: #333;"><em>{details}</em></p>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    st.markdown("---")
+
+                    # แสดงมาตรการที่มีอยู่แล้วโดยตรง
+
+                    st.markdown("**Risk  Transfer & Prevention (มาตรการป้องกัน/ถ่ายโอนความเสี่ยง):**")
+                    st.info(result['existing_prevention'])
+                    st.markdown("**Risk Monitor (การติดตาม):**")
+                    st.info(result['existing_monitor'])
     elif selected_analysis == "บทสรุปสำหรับผู้บริหาร":
 
         st.markdown("<h4 style='color: #001f3f;'>บทสรุปสำหรับผู้บริหาร</h4>", unsafe_allow_html=True)
