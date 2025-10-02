@@ -880,7 +880,19 @@ PSG9_FILE_PATH = "PSG9code.xlsx"
 SENTINEL_FILE_PATH = "Sentinel2024.xlsx"
 ALLCODE_FILE_PATH = "Code2024.xlsx"
 psg9_r_codes_for_counting = set()
-RISK_MITIGATION_FILE = "risk_mitigations.xlsx"
+RISK_MITIGATION_FILE_PATH = "RiskMitigation.xlsx" # <-- 1. กำหนดชื่อไฟล์มาตรการของคุณ
+df_mitigation = pd.DataFrame() # <-- 2. สร้าง DataFrame ว่างๆ ไว้ก่อนเป็นค่าเริ่มต้น
+
+try:
+    if Path(RISK_MITIGATION_FILE_PATH).is_file():
+        # 3. โหลดข้อมูลจากไฟล์ Excel เข้าไปในตัวแปร df_mitigation
+        df_mitigation = pd.read_excel(RISK_MITIGATION_FILE_PATH)
+        st.sidebar.success("Loaded Risk Mitigation data.") # (Optional) แสดงข้อความว่าโหลดสำเร็จ
+    else:
+        st.sidebar.warning("RiskMitigation.xlsx not found.") # (Optional) เตือนหากหาไฟล์ไม่เจอ
+
+except Exception as e:
+    st.sidebar.error(f"Failed to load Risk Mitigation: {e}")
 sentinel_composite_keys = set()
 df2 = pd.DataFrame()
 try:
