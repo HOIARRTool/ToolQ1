@@ -1095,10 +1095,10 @@ def display_executive_dashboard():
     # กำหนดรายการหน้าทั้งหมด
     app_functions_list = ["RCA Helpdesk (AI Assistant)", "จัดการข้อมูล (Admin)"]
     dashboard_pages_list = [
-        "แดชบอร์ดสรุปภาพรวม", "Heatmap รายเดือน", "Sentinel Events & Top 10",
-        "Risk Matrix (Interactive)", "กราฟสรุปอุบัติการณ์ (รายมิติ)",
+        "แดชบอร์ดสรุปภาพรวม", "หมวดหมู่และสถานะการแก้ไข","Risk Matrix (Interactive)", "Risk Register Assistant", "Heatmap รายเดือน", "Sentinel Events & Top 10",
+         "กราฟสรุปอุบัติการณ์ (รายมิติ)",
         "Sankey: ภาพรวม", "Sankey: มาตรฐานสำคัญจำเป็นต่อความปลอดภัย 9 ข้อ",
-        "สรุปอุบัติการณ์ตาม Safety Goals", "วิเคราะห์ตามหมวดหมู่และสถานะการแก้ไข",
+        "สรุปอุบัติการณ์ตาม Safety Goals",
         "Persistence Risk Index", "Early Warning: อุบัติการณ์ที่มีแนวโน้มสูงขึ้น", "บทสรุปสำหรับผู้บริหาร",
     ]
 
