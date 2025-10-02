@@ -18,9 +18,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY . .
 
-# ✅ --- เพิ่มคำสั่ง git lfs pull เพื่อดึงไฟล์ใหญ่ ---
-RUN git lfs pull
-# --- สิ้นสุด ---
-
 # Command to run the Streamlit app
 CMD ["streamlit", "run", "app.py", "--server.port", "8080", "--server.address", "0.0.0.0"]
