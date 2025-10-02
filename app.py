@@ -2078,7 +2078,7 @@ def display_executive_dashboard():
             fig_sunburst.update_traces(textinfo="label+percent entry")
             st.plotly_chart(fig_sunburst, use_container_width=True)
 
-    elif selected_analysis == "วิเคราะห์ตามหมวดหมู่และสถานะการแก้ไข":
+    elif selected_analysis == "หมวดหมู่และสถานะการแก้ไข":
         st.markdown("<h4 style='color: #001f3f;'>วิเคราะห์ตามหมวดหมู่และสถานะการแก้ไข</h4>", unsafe_allow_html=True)
 
         if 'Resulting Actions' not in df_filtered.columns or 'หมวดหมู่มาตรฐานสำคัญ' not in df_filtered.columns:
