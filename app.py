@@ -880,20 +880,9 @@ PSG9_FILE_PATH = "PSG9code.xlsx"
 SENTINEL_FILE_PATH = "Sentinel2024.xlsx"
 ALLCODE_FILE_PATH = "Code2024.xlsx"
 psg9_r_codes_for_counting = set()
-RISK_MITIGATION_FILE_PATH = "risk_mitigations.xlsx" 
-df_mitigation = pd.DataFrame() 
-
-try:
-    if Path(RISK_MITIGATION_FILE_PATH).is_file():
-        # 3. โหลดข้อมูลจากไฟล์ Excel เข้าไปในตัวแปร df_mitigation
-        df_mitigation = pd.read_excel(RISK_MITIGATION_FILE_PATH)
-        st.sidebar.success("Loaded Risk Mitigation data.") # (Optional) แสดงข้อความว่าโหลดสำเร็จ
-    else:
-        st.sidebar.warning("RiskMitigation.xlsx not found.") # (Optional) เตือนหากหาไฟล์ไม่เจอ
-
-except Exception as e:
-    st.sidebar.error(f"Failed to load Risk Mitigation: {e}") 
-
+RISK_MITIGATION_FILE = "risk_mitigations.xlsx"
+sentinel_composite_keys = set()
+df2 = pd.DataFrame()
 try:
     if Path(PSG9_FILE_PATH).is_file():
         PSG9code_df_master = pd.read_excel(PSG9_FILE_PATH)
@@ -911,9 +900,11 @@ try:
         if 'รหัส' in allcode2024_df.columns and all(c in allcode2024_df.columns for c in ["ชื่ออุบัติการณ์ความเสี่ยง", "กลุ่ม", "หมวด"]):
             df2 = allcode2024_df[["รหัส", "ชื่ออุบัติการณ์ความเสี่ยง", "กลุ่ม", "หมวด"]].drop_duplicates().copy()
             df2['รหัส'] = df2['รหัส'].astype(str).str.strip()
+    if Path(RISK_MITIGATION_FILE).is_file():
+        df_mitigation = pd.read_excel(RISK_MITIGATION_FILE)
+    else:
+        st.warning(f"ไม่พบไฟล์ '{RISK_MITIGATION_FILE}', ฟังก์ชัน Risk Register Assistant อาจให้คำแนะนำได้ไม่สมบูรณ์")
 
-sentinel_composite_keys = set()
-df2 = pd.DataFrame()
 except Exception as e:
     st.error(f"เกิดปัญหาในการโหลดไฟล์นิยาม: {e}")
 
