@@ -1193,14 +1193,14 @@ def display_executive_dashboard():
                 key="rca_incident_input"  
             )
             if st.button("ขอคำปรึกษาจาก AI", type="primary", use_container_width=True):
-                if not incident_description.strip():
-                    st.warning("กรุณาป้อนรายละเอียดอุบัติการณ์ก่อนครับ")
-                else:
-                    with st.spinner("AI กำลังวิเคราะห์และให้คำปรึกษา..."):
-                        consultation = get_consultation_response(incident_description)
-                        st.markdown("---")
-                        st.markdown("### ผลการปรึกษาจาก AI:")
-                        st.markdown(consultation)
+                with st.spinner("AI กำลังวิเคราะห์และให้คำปรึกษา..."):
+                    # <<< เรียกใช้ฟังก์ชัน โดยส่ง df_mitigation ที่โหลดไว้เข้าไปด้วย <<<
+                    result = get_risk_register_consultation(
+                        query=query,
+                        df=df_filtered,  # ข้อมูลที่ผ่านการกรองตามช่วงเวลาแล้ว
+                        risk_mitigation_df=df_mitigation,  # <--- ส่ง DataFrame นี้เข้าไป
+                        genai_model=your_genai_model  # <--- ตัวแปร model ของคุณ
+                    )
     
         elif selected_analysis == "จัดการข้อมูล (Admin)":
             display_admin_page()
