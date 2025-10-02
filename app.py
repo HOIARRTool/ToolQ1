@@ -25,7 +25,7 @@ try:
     import google.generativeai as genai
 except ImportError:
     genai = None
-
+from risk_register_assistant import get_risk_register_consultation
 # ==============================================================================
 # --- 1. การตั้งค่าและตัวแปรหลัก ---
 # ==============================================================================
