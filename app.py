@@ -1085,31 +1085,43 @@ def display_admin_page():
         else:
             df['หมวดหมู่มาตรฐานสำคัญ'] = "ไม่สามารถระบุ (PSG9code.xlsx ไม่ได้โหลด)"
 
-        # ---------------- Anonymize: ใช้ฟังก์ชันจาก anonymizer.py ----------------
-        # 1. ให้โมเดล AI ทำงานกับข้อมูลดั้งเดิมก่อน
-        ner_model = load_ner_model()
-        df = anonymize_column(df, text_col="รายละเอียดการเกิด", ner_model=ner_model,
-                              out_col="รายละเอียดการเกิด_Anonymized")
-        
-        # 2. ใช้ Regex เก็บตก HN จากคอลัมน์ที่ผ่าน AI มาแล้ว เพื่อความแน่นอน
-        if 'รายละเอียดการเกิด_Anonymized' in df.columns:
-            # ปรับปรุง Regex ให้ครอบคลุมมากขึ้นเล็กน้อย (รองรับการเว้นวรรคหลายแบบ)
-            hn_pattern = r'HN\s*\.?\s*\d+'
-            
-            # ทำการแทนที่ในคอลัมน์ผลลัพธ์สุดท้าย
-            df['รายละเอียดการเกิด_Anonymized'] = df['รายละเอียดการเกิด_Anonymized'].astype(str).apply(
-                lambda x: re.sub(hn_pattern, '[HN_REDACTED]', x, flags=re.IGNORECASE)
-            )
-        ner_model = load_ner_model()
+                    # ==========================================================
+                    # ✨ ส่วนที่เพิ่มเข้ามา: การปกปิดข้อมูลส่วนบุคคล ✨
+                    # ==========================================================
+                    st.info("กำลังโหลดโมเดล AI สำหรับปกปิดข้อมูลส่วนบุคคล (ครั้งแรกอาจใช้เวลาสักครู่)...")
+                    ner_model = load_ner_model()
 
+                    if ner_model and 'รายละเอียดการเกิด' in df.columns:
+                        st.info("กำลังประมวลผลเพื่อปกปิดข้อมูลส่วนบุคคลใน 'รายละเอียดการเกิด'...")
 
-        # ---------------- บันทึกผล ----------------
-        try:
-            df.to_parquet(PERSISTED_DATA_PATH, index=False)
-            st.success(f"ประมวลผลสำเร็จ! ข้อมูล {len(df)} รายการถูกบันทึกแล้ว")
-        except Exception as e:
-            st.error(f"บันทึกข้อมูลล้มเหลว: {e}")                                                               
+                        # สร้างคอลัมน์ใหม่สำหรับเก็บข้อมูลที่ปกปิดแล้ว
+                        df['รายละเอียดการเกิด_Anonymized'] = ''
 
+                        # ใช้ tqdm เพื่อแสดง progress bar
+                        progress_bar = st.progress(0)
+                        total_rows = len(df)
+
+                        # ใช้ .apply() จะเร็วกว่าการวนลูปด้วย for
+                        # เราสร้าง lambda function เพื่อส่ง model เข้าไปใน anonymize_text
+                        df['รายละเอียดการเกิด_Anonymized'] = df['รายละเอียดการเกิด'].astype(str).apply(
+                            lambda text: anonymize_text(text, ner_model)
+                        )
+                        progress_bar.progress(1.0)  # เสร็จสิ้น
+                        st.success("ปกปิดข้อมูลส่วนบุคคลเรียบร้อยแล้ว!")
+                    else:
+                        # หากไม่มีคอลัมน์ 'รายละเอียดการเกิด' ให้สร้างคอลัมน์เปล่าไว้
+                        df['รายละเอียดการเกิด_Anonymized'] = df.get('รายละเอียดการเกิด', '')
+
+                    for col in df.select_dtypes(include=['object']).columns:
+                        df[col] = df[col].astype(str)
+
+                    # บันทึกข้อมูลลง Parquet (ตอนนี้จะมีคอลัมน์ที่ปกปิดแล้วด้วย)
+                    df.to_parquet(PERSISTED_DATA_PATH, index=False)
+                    st.success(f"ประมวลผลสำเร็จ! ข้อมูล {len(df)} รายการถูกบันทึกแล้ว")
+                    # ... สิ้นสุดฟังก์ชัน
+                df.to_parquet(PERSISTED_DATA_PATH, index=False)
+                st.success(f"ประมวลผลสำเร็จ! ข้อมูล {len(df)} รายการถูกบันทึกแล้ว")
+                    
 def display_executive_dashboard():
     # --- 1. สร้าง Sidebar และเมนูเลือกหน้า ---
     st.sidebar.markdown(
