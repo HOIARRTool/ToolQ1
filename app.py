@@ -963,89 +963,89 @@ def display_admin_page():
       </ul>
     </div>
     """, unsafe_allow_html=True)
-       if uploaded_file:
-            with st.spinner("กำลังประมวลผลไฟล์ กรุณารอสักครู่..."):
-                df = load_data(uploaded_file)
-                if not df.empty:
-                    df.replace('', 'None', inplace=True)
-                    df = df.fillna('None')
-                    df.rename(columns={'วดป.ที่เกิด': 'Occurrence Date', 'ความรุนแรง': 'Impact'}, inplace=True)
+    if uploaded_file:
+        with st.spinner("กำลังประมวลผลไฟล์ กรุณารอสักครู่..."):
+            df = load_data(uploaded_file)
+            if not df.empty:
+                df.replace('', 'None', inplace=True)
+                df = df.fillna('None')
+                df.rename(columns={'วดป.ที่เกิด': 'Occurrence Date', 'ความรุนแรง': 'Impact'}, inplace=True)
 
-                    required_cols = ['Incident', 'Occurrence Date', 'Impact']
-                    if not all(col in df.columns for col in required_cols):
-                        st.error(f"ไฟล์อัปโหลดขาดคอลัมน์ที่จำเป็น: {', '.join(required_cols)}.")
-                        st.stop()
+                required_cols = ['Incident', 'Occurrence Date', 'Impact']
+                if not all(col in df.columns for col in required_cols):
+                    st.error(f"ไฟล์อัปโหลดขาดคอลัมน์ที่จำเป็น: {', '.join(required_cols)}.")
+                    st.stop()
 
-                    df['Impact'] = df['Impact'].astype(str).str.strip()
-                    df['รหัส'] = df['Incident'].astype(str).str.slice(0, 6).str.strip()
+                df['Impact'] = df['Impact'].astype(str).str.strip()
+                df['รหัส'] = df['Incident'].astype(str).str.slice(0, 6).str.strip()
 
-                    if not df2.empty:
-                        df = pd.merge(df, df2, on='รหัส', how='left')
-                    for col in ["ชื่ออุบัติการณ์ความเสี่ยง", "กลุ่ม", "หมวด"]:
-                        if col not in df.columns:
-                            df[col] = 'N/A'
-                        else:
-                            df[col].fillna('N/A', inplace=True)
-
-                    df['Occurrence Date'] = pd.to_datetime(df['Occurrence Date'], errors='coerce')
-                    df.dropna(subset=['Occurrence Date'], inplace=True)
-                    if df.empty:
-                        st.error("ไม่พบข้อมูลวันที่ที่ถูกต้อง")
-                        st.stop()
-
-                    impact_level_map = {('A', 'B', '1'): '1', ('C', 'D', '2'): '2', ('E', 'F', '3'): '3',
-                                        ('G', 'H', '4'): '4', ('I', '5'): '5'}
-
-                    def map_impact_level_func(val):
-                        s_val = str(val)
-                        for k, v in impact_level_map.items():
-                            if s_val in k: return v
-                        return 'N/A'
-
-                    df['Impact Level'] = df['Impact'].apply(map_impact_level_func)
-
-                    max_p = df['Occurrence Date'].max().to_period('M')
-                    min_p = df['Occurrence Date'].min().to_period('M')
-                    total_month_calc = (max_p.year - min_p.year) * 12 + (max_p.month - min_p.month) + 1
-
-                    df_freq_temp = df['Incident'].value_counts().reset_index()
-                    df_freq_temp.columns = ['Incident', 'count']
-                    df_freq_temp['Incident Rate/mth'] = (df_freq_temp['count'] / max(1, total_month_calc)).round(1)
-                    df = pd.merge(df, df_freq_temp, on="Incident", how='left')
-
-                    conditions_freq = [(df['Incident Rate/mth'] < 2.0), (df['Incident Rate/mth'] < 3.9),
-                                       (df['Incident Rate/mth'] < 6.9), (df['Incident Rate/mth'] < 29.9)]
-                    choices_freq = ['1', '2', '3', '4']
-                    df['Frequency Level'] = np.select(conditions_freq, choices_freq, default='5')
-
-                    df['Risk Level'] = df.apply(
-                        lambda row: f"{row['Impact Level']}{row['Frequency Level']}" if pd.notna(
-                            row['Impact Level']) and row['Impact Level'] != 'N/A' else 'N/A', axis=1)
-
-                    df = pd.merge(df, risk_color_df, on='Risk Level', how='left')
-                    df['Category Color'].fillna('Undefined', inplace=True)
-
-                    df['Incident Type'] = df['Incident'].astype(str).str[:3]
-                    df['Month'] = df['Occurrence Date'].dt.month
-                    df['เดือน'] = df['Month'].map(month_label)
-                    df['Year'] = df['Occurrence Date'].dt.year.astype(str)
-
-                    PSG9_ID_COL = 'PSG_ID'
-                    if 'PSG9code_df_master' in globals() and not PSG9code_df_master.empty and PSG9_ID_COL in PSG9code_df_master.columns:
-                        standards_to_merge = PSG9code_df_master[['รหัส', PSG9_ID_COL]].copy().drop_duplicates(
-                            subset=['รหัส'])
-                        standards_to_merge['รหัส'] = standards_to_merge['รหัส'].astype(str).str.strip()
-                        df = pd.merge(df, standards_to_merge, on='รหัส', how='left')
-                        df['หมวดหมู่มาตรฐานสำคัญ'] = df[PSG9_ID_COL].map(PSG9_label_dict).fillna(
-                            "ไม่จัดอยู่ใน PSG9 Catalog")
+                if not df2.empty:
+                    df = pd.merge(df, df2, on='รหัส', how='left')
+                for col in ["ชื่ออุบัติการณ์ความเสี่ยง", "กลุ่ม", "หมวด"]:
+                    if col not in df.columns:
+                        df[col] = 'N/A'
                     else:
-                        df['หมวดหมู่มาตรฐานสำคัญ'] = "ไม่สามารถระบุ (PSG9code.xlsx ไม่ได้โหลด)"
+                        df[col].fillna('N/A', inplace=True)
 
-                    for col in df.select_dtypes(include=['object']).columns:
-                        df[col] = df[col].astype(str)
+                df['Occurrence Date'] = pd.to_datetime(df['Occurrence Date'], errors='coerce')
+                df.dropna(subset=['Occurrence Date'], inplace=True)
+                if df.empty:
+                    st.error("ไม่พบข้อมูลวันที่ที่ถูกต้อง")
+                    st.stop()
 
-                    df.to_parquet(PERSISTED_DATA_PATH, index=False)
-                    st.success(f"ประมวลผลสำเร็จ! ข้อมูล {len(df)} รายการถูกบันทึกแล้ว")                                                                
+                impact_level_map = {('A', 'B', '1'): '1', ('C', 'D', '2'): '2', ('E', 'F', '3'): '3',
+                                    ('G', 'H', '4'): '4', ('I', '5'): '5'}
+
+                def map_impact_level_func(val):
+                    s_val = str(val)
+                    for k, v in impact_level_map.items():
+                        if s_val in k: return v
+                    return 'N/A'
+
+                df['Impact Level'] = df['Impact'].apply(map_impact_level_func)
+
+                max_p = df['Occurrence Date'].max().to_period('M')
+                min_p = df['Occurrence Date'].min().to_period('M')
+                total_month_calc = (max_p.year - min_p.year) * 12 + (max_p.month - min_p.month) + 1
+
+                df_freq_temp = df['Incident'].value_counts().reset_index()
+                df_freq_temp.columns = ['Incident', 'count']
+                df_freq_temp['Incident Rate/mth'] = (df_freq_temp['count'] / max(1, total_month_calc)).round(1)
+                df = pd.merge(df, df_freq_temp, on="Incident", how='left')
+
+                conditions_freq = [(df['Incident Rate/mth'] < 2.0), (df['Incident Rate/mth'] < 3.9),
+                                    (df['Incident Rate/mth'] < 6.9), (df['Incident Rate/mth'] < 29.9)]
+                choices_freq = ['1', '2', '3', '4']
+                df['Frequency Level'] = np.select(conditions_freq, choices_freq, default='5')
+
+                df['Risk Level'] = df.apply(
+                    lambda row: f"{row['Impact Level']}{row['Frequency Level']}" if pd.notna(
+                        row['Impact Level']) and row['Impact Level'] != 'N/A' else 'N/A', axis=1)
+
+                df = pd.merge(df, risk_color_df, on='Risk Level', how='left')
+                df['Category Color'].fillna('Undefined', inplace=True)
+
+                df['Incident Type'] = df['Incident'].astype(str).str[:3]
+                df['Month'] = df['Occurrence Date'].dt.month
+                df['เดือน'] = df['Month'].map(month_label)
+                df['Year'] = df['Occurrence Date'].dt.year.astype(str)
+
+                PSG9_ID_COL = 'PSG_ID'
+                if 'PSG9code_df_master' in globals() and not PSG9code_df_master.empty and PSG9_ID_COL in PSG9code_df_master.columns:
+                    standards_to_merge = PSG9code_df_master[['รหัส', PSG9_ID_COL]].copy().drop_duplicates(
+                        subset=['รหัส'])
+                    standards_to_merge['รหัส'] = standards_to_merge['รหัส'].astype(str).str.strip()
+                    df = pd.merge(df, standards_to_merge, on='รหัส', how='left')
+                    df['หมวดหมู่มาตรฐานสำคัญ'] = df[PSG9_ID_COL].map(PSG9_label_dict).fillna(
+                        "ไม่จัดอยู่ใน PSG9 Catalog")
+                else:
+                    df['หมวดหมู่มาตรฐานสำคัญ'] = "ไม่สามารถระบุ (PSG9code.xlsx ไม่ได้โหลด)"
+
+                for col in df.select_dtypes(include=['object']).columns:
+                    df[col] = df[col].astype(str)
+
+                df.to_parquet(PERSISTED_DATA_PATH, index=False)
+                st.success(f"ประมวลผลสำเร็จ! ข้อมูล {len(df)} รายการถูกบันทึกแล้ว")                                                                
 
 def display_executive_dashboard():
     # --- 1. สร้าง Sidebar และเมนูเลือกหน้า ---
