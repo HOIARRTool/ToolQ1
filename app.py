@@ -5,7 +5,7 @@ import streamlit as st
 import os
 st.set_page_config(layout="wide") 
 from tqdm import tqdm
-from anonymizer import load_ner_model, anonymize_text
+from anonymizer import load_ner_model, anonymize_column
 import streamlit as st
 import os # Make sure os is imported
 import pandas as pd
