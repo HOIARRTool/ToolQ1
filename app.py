@@ -1085,42 +1085,42 @@ def display_admin_page():
         else:
             df['หมวดหมู่มาตรฐานสำคัญ'] = "ไม่สามารถระบุ (PSG9code.xlsx ไม่ได้โหลด)"
 
-                    # ==========================================================
-                    # ✨ ส่วนที่เพิ่มเข้ามา: การปกปิดข้อมูลส่วนบุคคล ✨
-                    # ==========================================================
-                    st.info("กำลังโหลดโมเดล AI สำหรับปกปิดข้อมูลส่วนบุคคล (ครั้งแรกอาจใช้เวลาสักครู่)...")
-                    ner_model = load_ner_model()
+                # ==========================================================
+                # ✨ ส่วนที่เพิ่มเข้ามา: การปกปิดข้อมูลส่วนบุคคล ✨
+                # ==========================================================
+                st.info("กำลังโหลดโมเดล AI สำหรับปกปิดข้อมูลส่วนบุคคล (ครั้งแรกอาจใช้เวลาสักครู่)...")
+                ner_model = load_ner_model()
 
-                    if ner_model and 'รายละเอียดการเกิด' in df.columns:
-                        st.info("กำลังประมวลผลเพื่อปกปิดข้อมูลส่วนบุคคลใน 'รายละเอียดการเกิด'...")
+                if ner_model and 'รายละเอียดการเกิด' in df.columns:
+                    st.info("กำลังประมวลผลเพื่อปกปิดข้อมูลส่วนบุคคลใน 'รายละเอียดการเกิด'...")
 
-                        # สร้างคอลัมน์ใหม่สำหรับเก็บข้อมูลที่ปกปิดแล้ว
-                        df['รายละเอียดการเกิด_Anonymized'] = ''
+                    # สร้างคอลัมน์ใหม่สำหรับเก็บข้อมูลที่ปกปิดแล้ว
+                    df['รายละเอียดการเกิด_Anonymized'] = ''
 
-                        # ใช้ tqdm เพื่อแสดง progress bar
-                        progress_bar = st.progress(0)
-                        total_rows = len(df)
+                    # ใช้ tqdm เพื่อแสดง progress bar
+                    progress_bar = st.progress(0)
+                    total_rows = len(df)
 
-                        # ใช้ .apply() จะเร็วกว่าการวนลูปด้วย for
-                        # เราสร้าง lambda function เพื่อส่ง model เข้าไปใน anonymize_text
-                        df['รายละเอียดการเกิด_Anonymized'] = df['รายละเอียดการเกิด'].astype(str).apply(
-                            lambda text: anonymize_text(text, ner_model)
-                        )
-                        progress_bar.progress(1.0)  # เสร็จสิ้น
-                        st.success("ปกปิดข้อมูลส่วนบุคคลเรียบร้อยแล้ว!")
-                    else:
-                        # หากไม่มีคอลัมน์ 'รายละเอียดการเกิด' ให้สร้างคอลัมน์เปล่าไว้
-                        df['รายละเอียดการเกิด_Anonymized'] = df.get('รายละเอียดการเกิด', '')
+                    # ใช้ .apply() จะเร็วกว่าการวนลูปด้วย for
+                    # เราสร้าง lambda function เพื่อส่ง model เข้าไปใน anonymize_text
+                    df['รายละเอียดการเกิด_Anonymized'] = df['รายละเอียดการเกิด'].astype(str).apply(
+                        lambda text: anonymize_text(text, ner_model)
+                    )
+                    progress_bar.progress(1.0)  # เสร็จสิ้น
+                    st.success("ปกปิดข้อมูลส่วนบุคคลเรียบร้อยแล้ว!")
+                else:
+                    # หากไม่มีคอลัมน์ 'รายละเอียดการเกิด' ให้สร้างคอลัมน์เปล่าไว้
+                    df['รายละเอียดการเกิด_Anonymized'] = df.get('รายละเอียดการเกิด', '')
 
-                    for col in df.select_dtypes(include=['object']).columns:
-                        df[col] = df[col].astype(str)
+                for col in df.select_dtypes(include=['object']).columns:
+                    df[col] = df[col].astype(str)
 
-                    # บันทึกข้อมูลลง Parquet (ตอนนี้จะมีคอลัมน์ที่ปกปิดแล้วด้วย)
-                    df.to_parquet(PERSISTED_DATA_PATH, index=False)
-                    st.success(f"ประมวลผลสำเร็จ! ข้อมูล {len(df)} รายการถูกบันทึกแล้ว")
-                    # ... สิ้นสุดฟังก์ชัน
+                # บันทึกข้อมูลลง Parquet (ตอนนี้จะมีคอลัมน์ที่ปกปิดแล้วด้วย)
                 df.to_parquet(PERSISTED_DATA_PATH, index=False)
                 st.success(f"ประมวลผลสำเร็จ! ข้อมูล {len(df)} รายการถูกบันทึกแล้ว")
+                # ... สิ้นสุดฟังก์ชัน
+            df.to_parquet(PERSISTED_DATA_PATH, index=False)
+            st.success(f"ประมวลผลสำเร็จ! ข้อมูล {len(df)} รายการถูกบันทึกแล้ว")
                     
 def display_executive_dashboard():
     # --- 1. สร้าง Sidebar และเมนูเลือกหน้า ---
