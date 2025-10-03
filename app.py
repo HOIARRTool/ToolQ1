@@ -16,7 +16,6 @@ import base64
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 import numpy as np
-import re
 import statsmodels.api as sm
 from sklearn.linear_model import LinearRegression
 import plotly.express as px
@@ -26,6 +25,23 @@ try:
 except ImportError:
     genai = None
 from risk_register_assistant import get_risk_register_consultation
+import re
+
+def anonymize_text(text: str, ner_model=None) -> str:
+    if not isinstance(text, str):
+        return text
+
+    # 1) ปกปิด HN ทุกแบบ: HN 123456 / HN:123456 / HN.123456 / HN-123456
+    text = re.sub(r'(?i)\bHN[\s\.:#-]*\d{4,10}\b', 'HN.XXXXXX', text)
+
+    # 2) (ถ้ามี NER) ให้ NER ทำต่อได้ตามเดิม (แต่ต้องระวังอย่าไป unmask)
+    #    ตรงนี้สมมุติว่า anonymizer ของคุณทำงานบนสตริงทั้งก้อน
+    #    ถ้าไม่มี ก็ข้ามได้
+    # if ner_model:
+    #     text = your_ner_masker(text, ner_model)
+
+    return text
+
 # ==============================================================================
 # --- 1. การตั้งค่าและตัวแปรหลัก ---
 # ==============================================================================
@@ -1090,28 +1106,19 @@ def display_admin_page():
             # ==========================================================
             # ✨ ส่วนที่เพิ่มเข้ามา: การปกปิดข้อมูลส่วนบุคคล ✨
             # ==========================================================
+            # โหลดโมเดล NER หนึ่งครั้งพอ (อยู่นอกลูป)
             st.info("กำลังโหลดโมเดล AI สำหรับปกปิดข้อมูลส่วนบุคคล (ครั้งแรกอาจใช้เวลาสักครู่)...")
             ner_model = load_ner_model()
-
+            
             if ner_model and 'รายละเอียดการเกิด' in df.columns:
                 st.info("กำลังประมวลผลเพื่อปกปิดข้อมูลส่วนบุคคลใน 'รายละเอียดการเกิด'...")
-
-                # สร้างคอลัมน์ใหม่สำหรับเก็บข้อมูลที่ปกปิดแล้ว
-                df['รายละเอียดการเกิด_Anonymized'] = ''
-
-                # ใช้ tqdm เพื่อแสดง progress bar
-                progress_bar = st.progress(0)
-                total_rows = len(df)
-
-                # ใช้ .apply() จะเร็วกว่าการวนลูปด้วย for
-                # เราสร้าง lambda function เพื่อส่ง model เข้าไปใน anonymize_text
+            
                 df['รายละเอียดการเกิด_Anonymized'] = df['รายละเอียดการเกิด'].astype(str).apply(
                     lambda text: anonymize_text(text, ner_model)
                 )
-                progress_bar.progress(1.0)  # เสร็จสิ้น
+            
                 st.success("ปกปิดข้อมูลส่วนบุคคลเรียบร้อยแล้ว!")
             else:
-                # หากไม่มีคอลัมน์ 'รายละเอียดการเกิด' ให้สร้างคอลัมน์เปล่าไว้
                 df['รายละเอียดการเกิด_Anonymized'] = df.get('รายละเอียดการเกิด', '')
 
             for col in df.select_dtypes(include=['object']).columns:
