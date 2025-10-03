@@ -1113,8 +1113,12 @@ def display_admin_page():
             if ner_model and 'รายละเอียดการเกิด' in df.columns:
                 st.info("กำลังประมวลผลเพื่อปกปิดข้อมูลส่วนบุคคลใน 'รายละเอียดการเกิด'...")
             
-                df['รายละเอียดการเกิด_Anonymized'] = df['รายละเอียดการเกิด'].astype(str).apply(
-                    lambda text: anonymize_text(text, ner_model)
+                df['รายละเอียดการเกิด_Anonymized'] = anonymize_column(
+                    df['รายละเอียดการเกิด'].astype(str),
+                    ner_model=ner_model,
+                    extra_patterns=[
+                        (r'(?i)\bHN[\s\.:#-]*\d{4,10}\b', 'HN.XXXXXX'),
+                    ]
                 )
             
                 st.success("ปกปิดข้อมูลส่วนบุคคลเรียบร้อยแล้ว!")
