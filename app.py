@@ -953,6 +953,9 @@ def display_admin_page():
     st.header("อัปโหลดไฟล์รายงานอุบัติการณ์ (.xlsx)")
 
     st.markdown("""
+    uploaded_file = st.file_uploader(
+        "เลือกไฟล์ .xlsx ที่ดาวน์โหลดจาก NRLS",
+        type="xlsx"    
     <div style="font-size:16px">
       <ul>
         <li>เข้าสู่ระบบ <b>NRLS</b> ด้วยสิทธิ์ <b>Admin</b></li>
