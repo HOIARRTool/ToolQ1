@@ -1206,7 +1206,7 @@ def display_executive_dashboard():
         unsafe_allow_html=True)
 
     # กำหนดรายการหน้าทั้งหมด
-    app_functions_list = ["RCA Helpdesk (AI Assistant)", "จัดการข้อมูล (Admin)"]
+    app_functions_list = ["คู่มือการใช้งาน", "RCA Helpdesk (AI Assistant)", "จัดการข้อมูล (Admin)"]
     dashboard_pages_list = [
         "แดชบอร์ดสรุปภาพรวม", "หมวดหมู่และสถานะการแก้ไข","Risk Matrix (Interactive)", "Risk Register Assistant", "Heatmap รายเดือน", "Sentinel Events & Top 10",
          "กราฟสรุปอุบัติการณ์ (รายมิติ)",
