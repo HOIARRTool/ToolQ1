@@ -959,6 +959,7 @@ colors2 = np.array([["#e1f5fe", "#f6c8b6", "#dd191d", "#dd191d", "#dd191d", "#dd
                     ["#e1f5fe", "#f6c8b6", "#42db41", "#42db41", "#42db41", "#ffee58", "#ffee58"],
                     ["#e1f5fe", "#f6c8b6", "#f6c8b6", "#f6c8b6", "#f6c8b6", "#f6c8b6", "#f6c8b6"],
                     ["#e1f5fe", "#e1f5fe", "#e1f5fe", "#e1f5fe", "#e1f5fe", "#e1f5fe", "#e1f5fe"]])
+
 def display_user_guide():
     st.markdown("<h2 style='color: #001f3f;'>คู่มือการใช้งาน HOIA-RR Application</h2>", unsafe_allow_html=True)
     st.markdown("---")
@@ -1276,10 +1277,14 @@ def display_executive_dashboard():
     #  ✅ ส่วนที่ 1: หน้าที่ไม่ต้องโหลดข้อมูล
     # ==============================================================================
     if selected_analysis in app_functions_list:
-        if selected_analysis == "RCA Helpdesk (AI Assistant)":
+
+        if selected_analysis == "คู่มือการใช้งาน":
+            display_user_guide()
+
+        elif selected_analysis == "RCA Helpdesk (AI Assistant)":
             st.markdown("<h4 style='color: #001f3f;'>AI Assistant: ที่ปรึกษาเคสอุบัติการณ์</h4>", unsafe_allow_html=True)
             AI_IS_CONFIGURED = False
-            
+
             if genai:
                 # 1. ดึง API Key จาก os.environ.get
                 api_key = os.environ.get("GOOGLE_API_KEY")
@@ -1295,7 +1300,7 @@ def display_executive_dashboard():
             else:
                     # 4. กรณีที่หา Key ไม่เจอใน Environment Variables
                 st.error("⚠️ ไม่สามารถตั้งค่า AI Assistant ได้: ไม่พบ 'GOOGLE_API_KEY' ใน Environment Variables")
-    
+
             if not AI_IS_CONFIGURED:
                 st.stop()
             st.info("อธิบายรายละเอียดของอุบัติการณ์ที่เกิดขึ้น เพื่อให้ AI ช่วยให้คำปรึกษา")
@@ -1303,21 +1308,18 @@ def display_executive_dashboard():
                 "กรุณาอธิบายรายละเอียดอุบัติการณ์ที่นี่:",
                 height=150,
                 placeholder="เช่น ผู้ป่วยหญิงอายุ 65 ปี เป็นโรคเบาหวาน ได้รับยา losartan แต่เกิดผื่นขึ้นทั่วตัว...",
-                key="rca_incident_input"  
+                key="rca_incident_input"
             )
             if st.button("ขอคำปรึกษาจาก AI", type="primary", use_container_width=True):
-                # ตรวจสอบว่าผู้ใช้ป้อนข้อความแล้วหรือยัง
-                if incident_description.strip():
-                    with st.spinner("AI กำลังวิเคราะห์และให้คำปรึกษา..."):
-                        # 1. เรียกใช้ฟังก์ชันที่ถูกต้อง: get_consultation_response
-                        # 2. ส่งค่าจากตัวแปรที่ถูกต้อง: incident_description
-                        response = get_consultation_response(incident_description)
-                        # 3. แสดงผลลัพธ์ที่ได้จาก AI
-                        st.markdown(response)
+                if not incident_description.strip():
+                    st.warning("กรุณาป้อนรายละเอียดอุบัติการณ์ก่อนครับ")
                 else:
-                    # แจ้งเตือนหากผู้ใช้ยังไม่ได้กรอกข้อความ
-                    st.warning("กรุณาป้อนรายละเอียดอุบัติการณ์ก่อนขอคำปรึกษา")
-    
+                    with st.spinner("AI กำลังวิเคราะห์และให้คำปรึกษา..."):
+                        consultation = get_consultation_response(incident_description)
+                        st.markdown("---")
+                        st.markdown("### ผลการปรึกษาจาก AI:")
+                        st.markdown(consultation)
+
         elif selected_analysis == "จัดการข้อมูล (Admin)":
             display_admin_page()
 
