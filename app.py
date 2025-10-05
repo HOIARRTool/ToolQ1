@@ -1124,10 +1124,10 @@ def display_admin_page():
     st.markdown("""
     <div style="font-size:16px">
       <ul>
-        <li>เข้าสู่ระบบ <b>HRMS</b> ด้วยสิทธิ์ <b>Admin</b></li>
+        <li>เข้าสู่ระบบ <b>NRLS</b> ด้วยสิทธิ์ <b>Admin</b></li>
         <li>ไปที่เมนู <b>‘รายงาน’</b></li>
         <li>เลือก <b>‘การส่งออกข้อมูลรายงานอุบัติการณ์ขององค์กร (Excel File)’</b></li>
-        <li>ดาวน์โหลดไฟล์ Excel (.xlsx) และนำมาอัปโหลดที่นี่</li>
+        <li>ดาวน์โหลดไฟล์ Excel มา save ให้เป็น Excel Workbook (.xlsx) และนำมาอัปโหลดที่นี่</li>
       </ul>
     </div>
     """, unsafe_allow_html=True)
