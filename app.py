@@ -1187,22 +1187,14 @@ def display_admin_page():
         }, inplace=True)
         
         # 6. สร้าง 'รหัส' (6-digit) จาก 'Incident'
-        # (โค้ดเดิมสร้าง 'Incident' จาก 'รหัส: เรื่อง' แต่ตอนนี้เราได้ 'Incident' มาตรงๆ)
-        # เรายังคงต้องการ 'รหัส' (6-digit) สำหรับการ merge และวิเคราะห์
         df['รหัส'] = df['Incident'].astype(str).str.slice(0, 6).str.strip()
         
-        # (ส่วนการ split 'รหัส: เรื่องอุบัติการณ์' ถูกลบออก เพราะไฟล์ใหม่มีข้อมูลแยกมาแล้ว)
-
         # 7. สร้าง 'Resulting Actions' (ตรรกะใหม่)
-        # โค้ดเดิมใช้คอลัมน์ 'สถานะ' ซึ่งไฟล์ใหม่ไม่มี
-        # เราจะใช้คอลัมน์ "Raw Actions" (ที่เรา rename มา)
-        # ถ้ามันว่างเปล่า, 'None', หรือ 'nan' = ถือว่า 'None' (รอแก้ไข)
         if 'Raw Actions' in df.columns:
             df['Resulting Actions'] = df['Raw Actions'].astype(str).apply(
                 lambda x: 'None' if x.strip() == '' or x.strip().lower() == 'none' or x.strip().lower() == 'nan' else x
             )
         else:
-            # กรณีไฟล์ไม่มีคอลัมน์นี้เลย (ซึ่งไม่ควรเกิด เพราะเรา check ไปแล้ว)
             df['Resulting Actions'] = 'N/A'
 
         df.replace('', 'None', inplace=True)
@@ -1210,12 +1202,7 @@ def display_admin_page():
         df['Impact'] = df['Impact'].astype(str).str.strip()
 
         # ---------------- เติมข้อมูล กลุ่ม/หมวด ----------------
-        # 8. ลบ (หรือ comment out) ส่วน merge df2 
-        # เพราะไฟล์ใหม่มี 'กลุ่ม' และ 'หมวด' มาให้แล้ว
-        # if not df2.empty:
-        #     df = pd.merge(df, df2[['รหัส', 'กลุ่ม', 'หมวด']], on='รหัส', how='left')
-        
-        # (ส่วน fillna 'กลุ่ม'/'หมวด' ยังควรมีไว้ เผื่อบางแถวในไฟล์ใหม่ไม่มีข้อมูล)
+        # 8. ไฟล์ใหม่มี 'กลุ่ม' และ 'หมวด' มาให้แล้ว ไม่ต้อง merge df2
         for col in ["กลุ่ม", "หมวด"]:
             if col not in df.columns:
                 df[col] = 'N/A'
@@ -1223,24 +1210,44 @@ def display_admin_page():
                 df[col].fillna('N/A', inplace=True)
 
         # ---------------- แปลงวันที่ ----------------
-        # 9. ปรับการแปลงวันที่ (ไฟล์ใหม่มีเวลา "น.")
-        # เช่น "29/09/2568 00:30 น."
-        df['Occurrence Date'] = df['Occurrence Date'].astype(str).str.replace(' น.', '', regex=False)
-        # ลอง format "dd/mm/yyyy HH:MM" ก่อน
-        df['Occurrence Date'] = pd.to_datetime(df['Occurrence Date'], format='%d/%m/%Y %H:%M', dayfirst=True, errors='coerce')
+        # 9. ✅ *** ส่วนที่แก้ไขตรรกะการแปลงวันที่ ***
         
-        # (เพิ่ม) หาก format แรกไม่สำเร็จ (เช่น "15/10/2567 12:57:03 น.") ให้ลอง format ที่มีวินาที
-        if df['Occurrence Date'].isna().any():
-             df['Occurrence Date_temp'] = df['Occurrence Date'].astype(str).str.replace(' น.', '', regex=False)
-             df['Occurrence Date'] = pd.to_datetime(
-                 df['Occurrence Date_temp'], format='%d/%m/%Y %H:%M:%S', dayfirst=True, errors='coerce'
-             ).fillna(df['Occurrence Date']) # เอาค่าเก่าที่ไม่na กลับมา
-             df = df.drop(columns=['Occurrence Date_temp'])
+        # เก็บสตริงที่สะอาดแล้วไว้ในคอลัมน์ชั่วคราว
+        try:
+            cleaned_date_str = df['Occurrence Date'].astype(str).str.replace(' น.', '', regex=False)
+        except Exception as e:
+            st.error(f"เกิดข้อผิดพลาดขณะลบ ' น.' ออกจากคอลัมน์วันที่: {e}")
+            st.stop()
 
+        # ลอง format "dd/mm/yyyy HH:MM" (ไม่มีวินาที)
+        parsed_dates_1 = pd.to_datetime(
+            cleaned_date_str, 
+            format='%d/%m/%Y %H:%M', 
+            dayfirst=True, 
+            errors='coerce'
+        )
 
-        invalid_dates = df['Occurrence Date'].isna().sum()
+        # ลอง format "dd/mm/yyyy HH:MM:SS" (มีวินาที)
+        parsed_dates_2 = pd.to_datetime(
+            cleaned_date_str, 
+            format='%d/%m/%Y %H:%M:%S', 
+            dayfirst=True, 
+            errors='coerce'
+        )
+
+        # รวมผลลัพธ์: เอาค่าจาก 1 ก่อน, ถ้าเป็น NaT (ไม่สำเร็จ) ให้ลองเอาค่าจาก 2
+        df['Occurrence Date'] = parsed_dates_1.fillna(parsed_dates_2)
+
+        # (จบส่วนที่แก้ไข)
+
+        # ตรวจสอบหลังการ parse
+        invalid_mask = df['Occurrence Date'].isna()
+        invalid_dates = invalid_mask.sum()
+
         if invalid_dates > 0:
-            st.warning(f"ตรวจพบและข้าม {invalid_dates} แถวที่มีรูปแบบ 'วันที่' ไม่ถูกต้อง")
+            # ดึงตัวอย่างแรกที่ parse ไม่สำเร็จ (จากสตริงที่ clean แล้ว)
+            example_failed_date = cleaned_date_str[invalid_mask].iloc[0]
+            st.warning(f"ตรวจพบและข้าม {invalid_dates} แถวที่มีรูปแบบ 'วันที่' ไม่ถูกต้อง (ตัวอย่างที่ parse ไม่ผ่าน: '{example_failed_date}')")
 
         df.dropna(subset=['Occurrence Date'], inplace=True)
         if df.empty:
@@ -1248,8 +1255,7 @@ def display_admin_page():
             st.stop()
 
         # ---------------- Impact/Freq/Risk ----------------
-        # (ส่วนนี้ทั้งหมดควรทำงานได้เลย เพราะมันขึ้นกับ 'Impact' และ 'Occurrence Date'
-        # ซึ่งเราได้ rename มาถูกต้องแล้ว)
+        # (ส่วนนี้ทำงานได้ตามปกติ)
         impact_level_map = {('A', 'B', '1'): '1', ('C', 'D', '2'): '2', ('E', 'F', '3'): '3',
                             ('G', 'H', '4'): '4', ('I', '5'): '5'}
 
