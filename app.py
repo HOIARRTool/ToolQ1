@@ -9,6 +9,7 @@ from anonymizer import load_ner_model, anonymize_column
 import streamlit as st
 import os # Make sure os is imported
 import pandas as pd
+from compat_columns import normalize_incident_dataframe
 from streamlit_modal import Modal
 from ai_assistant import get_consultation_response
 from pathlib import Path
@@ -1120,29 +1121,101 @@ def display_user_guide():
 import re # (ตรวจสอบว่ามี import re ที่ส่วนบนของไฟล์โค้ดของคุณ)
 import re # (ตรวจสอบว่ามี import re ที่ส่วนบนของไฟล์โค้ดของคุณ)
 
+
 def display_admin_page():
     st.title("🔑 Admin: Data Upload")
-    st.header("อัปโหลดไฟล์รายงานอุบัติการณ์ (.xlsx หรือ .csv)")
+    st.warning("ส่วนนี้สำหรับผู้ดูแลระบบเท่านั้น")
+    password = st.text_input("กรุณาใส่รหัสผ่าน:", type="password")
+    if password == ADMIN_PASSWORD:
+        st.success("เข้าสู่ระบบสำเร็จ!")
+        st.header("อัปโหลดไฟล์รายงานอุบัติการณ์ (.xlsx)")
+        uploaded_file = st.file_uploader("เลือกไฟล์ Excel ของคุณที่นี่:", type=".xlsx")
+        st.caption("เคล็ดลับ: วาง Code2024.xlsx ไว้ในไดเรกทอรีเดียวกันกับ app.py เพื่อให้ระบบ map กลุ่ม/หมวด ให้อัตโนมัติ")
+        if uploaded_file:
+            with st.spinner("กำลังประมวลผลไฟล์ กรุณารอสักครู่..."):
+                # อ่าน
+                try:
+                    df_raw = load_data(uploaded_file)
+                except Exception as e:
+                    st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์ Excel: {e}")
+                    return
+                if df_raw is None or df_raw.empty:
+                    st.error("ไฟล์ว่างหรืออ่านไม่ได้")
+                    return
 
-    st.markdown("""
-    <div style="font-size:16px">
-      <ul>
-        <li>เข้าสู่ระบบ <b>NRLS</b> ด้วยสิทธิ์ <b>Admin</b></li>
-        <li>ไปที่เมนู <b>‘รายงาน’</b></li>
-        <li>เลือก <b>‘การส่งออกข้อมูลรายงานอุบัติการณ์ขององค์กร (Excel File)’</b></li>
-        <li>ดาวน์โหลดไฟล์ Excel มา save ให้เป็น Excel Workbook (.xlsx) และนำมาอัปโหลดที่นี่</li>
-        <li><b>หรือ</b> อัปโหลดไฟล์ .csv ที่มีโครงสร้างคอลัมน์ตามที่กำหนด</li>
-      </ul>
-    </div>
-    """, unsafe_allow_html=True)
+                # แปลงสคีมา + เติมกลุ่ม/หมวดด้วย Code2024.xlsx (ถ้ามี)
+                try:
+                    df = normalize_incident_dataframe(df_raw, allcode_path="Code2024.xlsx")
+                except Exception as e:
+                    st.error(f"normalize_incident_dataframe ล้มเหลว: {e}")
+                    return
 
-    uploaded_file = st.file_uploader("เลือกไฟล์ของคุณที่นี่:", type=[".xlsx", ".csv"])
-    
-    if not uploaded_file:
-        return
+                # อนุพันธ์ที่แอปส่วนอื่นต้องใช้
+                import numpy as np
+                df['Occurrence Date'] = pd.to_datetime(df['Occurrence Date'], errors='coerce')
+                df.dropna(subset=['Occurrence Date'], inplace=True)
+                if df.empty:
+                    st.error("ไม่พบข้อมูลวันที่ที่ถูกต้องหลังแปลงสคีมา")
+                    return
 
-    # --- ฟังก์ชันช่วย: แปลงสตริงปี พ.ศ. เป็น ค.ศ. ---
-    def convert_be_str_to_ad_str(be_date_str):
+                max_p = df['Occurrence Date'].max().to_period('M')
+                min_p = df['Occurrence Date'].min().to_period('M')
+                total_month_calc = (max_p.year - min_p.year) * 12 + (max_p.month - min_p.month) + 1
+
+                # อัตราเกิด/เดือน และระดับความถี่
+                df_freq_temp = df['Incident'].value_counts().reset_index()
+                df_freq_temp.columns = ['Incident', 'count']
+                df_freq_temp['Incident Rate/mth'] = (df_freq_temp['count'] / max(1, total_month_calc)).round(1)
+                df = pd.merge(df, df_freq_temp, on="Incident", how='left')
+
+                conditions_freq = [
+                    (df['Incident Rate/mth'] < 2.0),
+                    (df['Incident Rate/mth'] < 3.9),
+                    (df['Incident Rate/mth'] < 6.9),
+                    (df['Incident Rate/mth'] < 29.9),
+                ]
+                choices_freq = ['1', '2', '3', '4']
+                df['Frequency Level'] = np.select(conditions_freq, choices_freq, default='5')
+
+                # คำนวณ Risk Level (ใช้ Impact Level ที่ normalize มาแล้ว)
+                df['Risk Level'] = df.apply(
+                    lambda row: f"{row['Impact Level']}{row['Frequency Level']}" if pd.notna(row['Impact Level']) and str(row['Impact Level']) != 'N/A' else 'N/A',
+                    axis=1
+                )
+
+                # เติมสีหมวดเสี่ยง
+                risk_color_data = {
+                    'Category Color': ["Critical", "Critical", "Critical", "Critical", "Critical", "High", "High", "Critical",
+                                       "Critical", "Critical", "Medium", "Medium", "High", "Critical", "Critical", "Low", "Medium",
+                                       "Medium", "High", "High", "Low", "Low", "Low", "Medium", "Medium"],
+                    'Risk Level': ["51", "52", "53", "54", "55", "41", "42", "43", "44", "45", "31", "32", "33", "34", "35", "21",
+                                   "22", "23", "24", "25", "11", "12", "13", "14", "15"]
+                }
+                risk_color_df_local = pd.DataFrame(risk_color_data)
+                df = pd.merge(df, risk_color_df_local, on='Risk Level', how='left')
+                df['Category Color'].fillna('Undefined', inplace=True)
+
+                # ฟิลด์ช่วยในการแสดงผล
+                df['Incident Type'] = df['Incident'].astype(str).str[:3]
+                df['Month'] = df['Occurrence Date'].dt.month
+                month_label_local = {1: '01 มกราคม', 2: '02 กุมภาพันธ์', 3: '03 มีนาคม', 4: '04 เมษายน', 5: '05 พฤษภาคม', 6: '06 มิถุนายน',
+                               7: '07 กรกฎาคม', 8: '08 สิงหาคม', 9: '09 กันยายน', 10: '10 ตุลาคม', 11: '11 พฤศจิกายน', 12: '12 ธันวาคม'}
+                df['เดือน'] = df['Month'].map(month_label_local)
+                df['Year'] = df['Occurrence Date'].dt.year.astype(str)
+
+                for col in df.select_dtypes(include=['object']).columns:
+                    df[col] = df[col].astype(str)
+
+                # เซฟลงพาร์เกต์สำหรับแดชบอร์ด
+                DATA_DIR.mkdir(exist_ok=True, parents=True)
+                df.to_parquet(PERSISTED_DATA_PATH, index=False)
+                st.success(f"ประมวลผลสำเร็จ! ข้อมูล {len(df)} รายการถูกบันทึกแล้ว")
+
+    elif password:
+        st.error("รหัสผ่านไม่ถูกต้อง!")
+
+
+def convert_be_str_to_ad_str(be_date_str):
         """
         ค้นหาส่วนที่เป็น dd/mm/yyyy ในสตริง และถ้า yyyy > 2500
         จะทำการ -543 และคืนค่าสตริงที่แทนที่ด้วยปี ค.ศ. แล้ว
