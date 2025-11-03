@@ -1,124 +1,77 @@
 # compat_columns.py
+import re
 import pandas as pd
-import numpy as np
 
-# ====== ค่ามาตรฐานที่แอปใช้หลัง normalize ======
-STANDARD_COLS = [
-    "รหัสหัวข้อ",                # from: รหัส
-    "หัวข้อ",                    # from: Incident
-    "วัน-เวลา ที่เกิดเหตุ",       # from: Occurrence Date
-    "ระดับความรุนแรง",           # from: Impact Level (fallback: Impact/ความรุนแรง)
-    "สรุปปัญหา/เหตุการณ์โดยย่อ",  # from: รายละเอียดการเกิด
-    "กลุ่มอุบัติการณ์",
-    "หมวด",
-]
+def _coerce_code_str(series: pd.Series) -> pd.Series:
+    """บังคับคีย์ให้เป็น string แบบสะอาด ใช้ได้กับทั้งตัวเลข/รหัส"""
+    def _norm(x):
+        if pd.isna(x):
+            return pd.NA
+        s = str(x).strip()
+        s = re.sub(r"\.0$", "", s)  # ตัด .0 ท้ายค่าที่มาจากเลขทศนิยม Excel
+        s = s.replace(",", "")      # กันมี comma
+        return s
+    # ใช้ dtype 'string' เพื่อให้ NA เป็น <NA> ไม่ใช่ "nan"
+    return series.map(_norm).astype("string")
 
-# ====== mapping จากหัวตารางของคุณ -> ชื่อมาตรฐาน ======
-RENAME_MAP = {
-    "รหัส": "รหัสหัวข้อ",
-    "Incident": "หัวข้อ",
-    "Occurrence Date": "วัน-เวลา ที่เกิดเหตุ",
-    "Impact Level": "ระดับความรุนแรง",
-    "Impact": "ระดับความรุนแรง",          # เผื่อบางไฟล์ไม่มี Impact Level
-    "ความรุนแรง": "ระดับความรุนแรง",      # เผื่อหัวไทย
-    "รายละเอียดการเกิด": "สรุปปัญหา/เหตุการณ์โดยย่อ",
-    # คอลัมน์อื่น ๆ ที่คุณมี จะถูกเก็บไว้เหมือนเดิม ไม่ทับ
-}
-
-# เลือกคอลัมน์รหัสที่ใช้ merge กับ Code2024.xlsx
-CODE_KEYS = ["รหัสหัวข้อ", "รหัส", "Code", "รหัสรายงาน"]
-
-def _read_codebook(path: str) -> pd.DataFrame | None:
-    try:
-        cb = pd.read_excel(path)
-    except Exception:
-        return None
-    if cb is None or cb.empty:
-        return None
-
-    # พยายาม normalize หัวตารางของ codebook ให้มี: 'รหัสหัวข้อ','กลุ่มอุบัติการณ์','หมวด'
-    cb_cols = {c.strip(): c for c in cb.columns if isinstance(c, str)}
-    # เครสที่ codebook ใช้หัว "รหัส"
-    if "รหัสหัวข้อ" not in cb_cols and "รหัส" in cb_cols:
-        cb.rename(columns={cb_cols["รหัส"]: "รหัสหัวข้อ"}, inplace=True)
-    # เครสสะกดแตกต่าง
-    for want, aliases in {
-        "กลุ่มอุบัติการณ์": ["กลุ่ม", "กลุ่มเหตุการณ์", "ชื่ออุบัติการณ์ความเสี่ยง", "Risk Group", "Group"],
-        "หมวด": ["หมวดหมู่", "Category"],
-    }.items():
-        if want not in cb.columns:
-            for a in aliases:
-                if a in cb.columns:
-                    cb.rename(columns={a: want}, inplace=True)
-                    break
-
-    keep = [c for c in ["รหัสหัวข้อ", "กลุ่มอุบัติการณ์", "หมวด"] if c in cb.columns]
-    if not keep or "รหัสหัวข้อ" not in keep:
-        return None
-    return cb[keep].drop_duplicates()
-
-def normalize_dataframe_columns(raw_df: pd.DataFrame | None, allcode_path: str | None = None):
-    """รับ DataFrame ที่มีหัวตารางแบบของผู้ใช้ แล้วรีเนม/เติมคอลัมน์ให้เป็นมาตรฐานที่แอปต้องการ
-    คืนค่า: (df_norm, missing_cols_after)"""
-
-    # กันเคสไม่มีข้อมูล
-    if raw_df is None:
-        return pd.DataFrame(), ["no_data"]
-    if getattr(raw_df, "empty", False):
-        return pd.DataFrame(), ["empty_data"]
-
+def normalize_dataframe_columns(raw_df: pd.DataFrame, allcode_path: str | None = None):
     df = raw_df.copy()
 
-    # 1) รีเนมคอลัมน์เท่าที่แมปได้
-    # ทำงานแบบ case-insensitive เบา ๆ
-    lower_map = {k.lower(): v for k, v in RENAME_MAP.items()}
-    rename_dict = {}
-    for c in df.columns:
-        if isinstance(c, str) and c.strip().lower() in lower_map:
-            rename_dict[c] = lower_map[c.strip().lower()]
-    if rename_dict:
-        df.rename(columns=rename_dict, inplace=True)
+    # ----- โค้ดแม็พชื่อคอลัมน์เดิมของคุณ -> คอลัมน์มาตรฐาน -----
+    # ถ้ายังไม่มี "รหัสหัวข้อ" แต่มี "รหัสรายงาน" ให้ย้ายมาใช้เป็นคีย์
+    if "รหัสหัวข้อ" not in df.columns and "รหัสรายงาน" in df.columns:
+        df["รหัสหัวข้อ"] = df["รหัสรายงาน"]
 
-    # 2) จัดคอลัมน์ "ระดับความรุนแรง" (ถ้ายังไม่มี)
-    if "ระดับความรุนแรง" not in df.columns:
-        for alt in ["Impact Level", "Impact", "ความรุนแรง"]:
-            if alt in raw_df.columns:
-                df["ระดับความรุนแรง"] = raw_df[alt]
-                break
+    # บังคับให้คีย์เป็นสตริงสะอาดเสมอ
+    if "รหัสหัวข้อ" in df.columns:
+        df["รหัสหัวข้อ"] = _coerce_code_str(df["รหัสหัวข้อ"])
 
-    # 3) วันที่: แปลง "วัน-เวลา ที่เกิดเหตุ" ให้เป็น datetime ถ้ามี
-    if "วัน-เวลา ที่เกิดเหตุ" in df.columns:
-        try:
-            df["วัน-เวลา ที่เกิดเหตุ"] = pd.to_datetime(df["วัน-เวลา ที่เกิดเหตุ"], errors="coerce")
-        except Exception:
-            pass
+    missing_cols = []
 
-    # 4) เติมคอลัมน์ที่จำเป็นแต่ขาด ให้เป็นค่าว่างก่อน
-    for col in STANDARD_COLS:
-        if col not in df.columns:
-            df[col] = np.nan
-
-    # 5) merge กลุ่ม/หมวดจาก Code2024.xlsx (ถ้ามี)
+    # ----- โหลด Code2024.xlsx แล้ว merge กลุ่ม/หมวด -----
     if allcode_path:
-        cb = _read_codebook(allcode_path)
-        if cb is not None and not cb.empty:
-            # หาคีย์สำหรับ join (ตามลำดับ)
-            key = None
-            for k in CODE_KEYS:
-                if k in df.columns:
-                    key = k
-                    break
-            if key is None:
-                # บางไฟล์ df ไม่มี 'รหัสหัวข้อ' แต่มี 'รหัส' อยู่เดิม
-                for k in ["รหัส", "รหัสรายงาน"]:
-                    if k in raw_df.columns:
-                        df["รหัสหัวข้อ"] = raw_df[k]
-                        key = "รหัสหัวข้อ"
-                        break
-            if key is not None and "รหัสหัวข้อ" in cb.columns:
-                # ทำให้ชื่อคอลัมน์คีย์ตรงกัน
-                if key != "รหัสหัวข้อ":
-                    df = df.rename(columns={key: "รหัสหัวข้อ"})
+        try:
+            cb = pd.read_excel(allcode_path, engine="openpyxl")
+            # รองรับชื่อคอลัมน์ใน codebook ที่ต่างกันเล็กน้อย
+            # ต้องมีคอลัมน์ 'รหัสหัวข้อ' ใน codebook เช่นกัน
+            if "รหัสหัวข้อ" not in cb.columns:
+                # ถ้าชื่อคีย์ใน codebook เป็น 'รหัสรายงาน' ก็โคลนมา
+                if "รหัสรายงาน" in cb.columns:
+                    cb["รหัสหัวข้อ"] = cb["รหัสรายงาน"]
+                else:
+                    cb["รหัสหัวข้อ"] = pd.NA
+
+            cb["รหัสหัวข้อ"] = _coerce_code_str(cb["รหัสหัวข้อ"])
+
+            # ทำความสะอาดชื่อคอลัมน์เป้าหมายที่เราจะดึง เช่น กลุ่มอุบัติการณ์, หมวด
+            # ถ้าชื่อในไฟล์คุณต่างไป ให้เพิ่ม mapping ได้
+            for col in ["กลุ่มอุบัติการณ์", "หมวด"]:
+                if col not in cb.columns:
+                    cb[col] = pd.NA
+
+            # ถ้า df ไม่มีคีย์พอ (ว่างทั้งหมด) ให้ข้าม merge
+            if "รหัสหัวข้อ" in df.columns and df["รหัสหัวข้อ"].notna().any():
+                df = df.merge(cb[["รหัสหัวข้อ", "กลุ่มอุบัติการณ์", "หมวด"]],
+                              on="รหัสหัวข้อ", how="left", suffixes=("", "_cb"))
+                # เติมค่าว่างจากด้านซ้ายด้วยค่าที่ merge มา
+                for col in ["กลุ่มอุบัติการณ์", "หมวด"]:
+                    if col in df.columns and f"{col}_cb" in df.columns:
+                        df[col] = df[col].fillna(df[f"{col}_cb"])
+                        df.drop(columns=[f"{col}_cb"], inplace=True, errors="ignore")
+            else:
+                # ไม่มีคีย์ให้ merge
+                missing_cols.extend(["กลุ่มอุบัติการณ์", "หมวด"])
+        except Exception as e:
+            # โหลด codebook ไม่ได้ ไม่ต้องล้ม ให้ทำงานต่อและแจ้งเตือน
+            print(f"[compat_columns] โหลด {allcode_path} ไม่ได้: {e}")
+            missing_cols.extend(["กลุ่มอุบัติการณ์", "หมวด"])
+    else:
+        # ไม่ได้ระบุ codebook
+        missing_cols.extend(["กลุ่มอุบัติการณ์", "หมวด"])
+
+    # คืนค่าตามสัญญาเดิม
+    return df, list(dict.fromkeys(missing_cols))  # unique & keep order
+                
                 df = df.merge(cb, on="รหัสหัวข้อ", how="left", suffixes=("", "_cb"))
                 # ถ้าใน df เดิมมี 'กลุ่มอุบัติการณ์'/'หมวด' ให้อยู่; otherwise ใช้จาก codebook
                 if "กลุ่มอุบัติการณ์_cb" in df.columns:
