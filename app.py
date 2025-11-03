@@ -1145,19 +1145,30 @@ def display_admin_page():
     """, unsafe_allow_html=True)
 
     uploaded_file = st.file_uploader("เลือกไฟล์ของคุณที่นี่:", type=[".xlsx"])
+    # ----- อัปโหลดไฟล์ + ระบุพาธ Code2024.xlsx -----
     codebook_path = st.text_input("พาธไปยัง Code2024.xlsx (ถ้ามี):", value="Code2024.xlsx")
-
-    if uploaded_file:
-        with st.spinner("กำลังประมวลผลไฟล์ กรุณารอสักครู่..."):
-            raw_df = load_data(uploaded_file)
-            if not raw_df.empty:
-                # --- ทำให้คอลัมน์เข้ากันได้ + เติมกลุ่ม/หมวดจาก Code2024.xlsx ---
-                df, missing_cols = normalize_dataframe_columns(raw_df, allcode_path=codebook_path)
+    uploaded_file = st.file_uploader("เลือกไฟล์ Excel (.xlsx)", type=["xlsx"])
     
-                if missing_cols:
-                    st.warning(f"คอลัมน์ที่ยังขาด (จะพยายามดำเนินการต่อ): {', '.join(missing_cols)}")
-    if not uploaded_file:
-        return
+    if uploaded_file is None:
+        st.info("อัปโหลดไฟล์ .xlsx ก่อนเพื่อเริ่มประมวลผล")
+        st.stop()
+    
+    with st.spinner("กำลังประมวลผลไฟล์ กรุณารอสักครู่..."):
+        raw_df = load_data(uploaded_file)  # ฟังก์ชันเดิมของคุณ
+        if raw_df is None or raw_df.empty:
+            st.error("ไม่สามารถอ่านข้อมูลจากไฟล์ได้ หรือไฟล์ว่าง")
+            st.stop()
+    
+        # --- ทำให้คอลัมน์เข้ากันได้ + เติมกลุ่ม/หมวดจาก Code2024.xlsx (ถ้าระบุพาธ) ---
+        df, missing_cols = normalize_dataframe_columns(raw_df, allcode_path=(codebook_path or None))
+    
+        # เก็บไว้ใช้ต่อทั้งแอป
+        st.session_state["raw_df"] = raw_df
+        st.session_state["df"] = df
+    
+        # แจ้งเตือนถ้ายังมีคอลัมน์มาตรฐานที่ไม่มีข้อมูล (จะยังทำงานต่อได้)
+        if missing_cols:
+            st.warning("คอลัมน์มาตรฐานที่ยังไม่มีข้อมูล: " + ", ".join(missing_cols))
 
     # --- ฟังก์ชันช่วย: แปลงสตริงปี พ.ศ. เป็น ค.ศ. ---
     def convert_be_str_to_ad_str(be_date_str):
