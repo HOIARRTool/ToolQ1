@@ -1166,27 +1166,20 @@ def display_admin_page():
     # กันตัวแปรยังไม่ถูกกำหนด
     raw_df = None
     
-    if uploaded_file is not None:
-        with st.spinner("กำลังประมวลผลไฟล์ กรุณารอสักครู่..."):
-            raw_df = _load_any_file(uploaded_file)
+    if uploaded_file:
+        with st.spinner("อ่านไฟล์เสร็จ! กำลังทำมาตรฐานคอลัมน์ และ merge กลุ่ม/หมวด (ถ้ามี Code2024.xlsx)..."):
+            raw_df = load_data(uploaded_file)   # ใช้ฟังก์ชันอ่านไฟล์เดิมของคุณ
+            df, missing_cols = normalize_dataframe_columns(raw_df, allcode_path=(codebook_path or None))
     
-            if raw_df is None or raw_df.empty:
-                st.error("ไฟล์ว่างหรืออ่านไม่สำเร็จ")
-            else:
-                # ทำคอลัมน์ให้เข้ามาตรฐาน + เติมกลุ่ม/หมวดจาก Code2024.xlsx (ถ้ามี)
-                df, missing_cols = normalize_dataframe_columns(raw_df, allcode_path=(codebook_path or None))
+        st.success("อ่านไฟล์สำเร็จ! ทำคอลัมน์มาตรฐานแล้ว และ merge กลุ่ม/หมวดแล้ว (ถ้ามี Code2024.xlsx)")
     
-                # เก็บไว้ใช้ต่อทั้งแอป
-                st.session_state["DF_MASTER"] = df
+        if missing_cols:
+            st.info("คอลัมน์ที่ไฟล์ใหม่ของคุณยังขาด (จะดำเนินการต่อได้): " + ", ".join(missing_cols))
     
-                st.success("อ่านไฟล์สำเร็จ! ทำคอลัมน์เข้ามาตรฐานแล้ว และ merge กลุ่ม/หมวด (ถ้ามี Code2024.xlsx)")
-                if missing_cols:
-                    st.warning("คอลัมน์ที่ยังขาด (จะแสดงเป็นค่าว่าง/พยายามดำเนินการต่อ): " + ", ".join(missing_cols))
-    
-                with st.expander("ดูตัวอย่างข้อมูล (หัว 10 แถว)"):
-                    st.dataframe(df.head(10), use_container_width=True)
+        # เก็บ df เข้าสถานะ/แสดงตัวอย่างต่อไปตาม flow เดิมของคุณ
+        st.dataframe(df.head(10))
     else:
-        st.info("โปรดอัปโหลดไฟล์เหตุการณ์ (.xlsx หรือ .csv) เพื่อเริ่มประมวลผล")
+        st.warning("กรุณาเลือกไฟล์ .xlsx หรือ .csv ของเหตุการณ์")
     
         # --- ทำให้คอลัมน์เข้ากันได้ + เติมกลุ่ม/หมวดจาก Code2024.xlsx (ถ้าระบุพาธ) ---
         df, missing_cols = normalize_dataframe_columns(raw_df, allcode_path=(codebook_path or None))
