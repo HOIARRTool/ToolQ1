@@ -51,7 +51,16 @@ def _load_codebook(path: str) -> pd.DataFrame:
     out["รหัส"] = out["รหัส"].astype(str).str.strip()
     return out
 
-def normalize_dataframe_columns(raw_df: pd.DataFrame, allcode_path: str = None) -> Tuple[pd.DataFrame, List[str]]:
+def normalize_dataframe_columns(raw_df, allcode_path=None):
+    # กันกรณีรับ None เข้ามา
+    if raw_df is None:
+        return pd.DataFrame(), ["no_data"]
+
+    # ถ้าเป็น DataFrame เปล่า
+    if hasattr(raw_df, "empty") and raw_df.empty:
+        return pd.DataFrame(), ["empty_data"]
+
+    # ทำงานต่อได้
     df = raw_df.copy()
 
     # รีเนมคอลัมน์ที่ใช้งานจริง
