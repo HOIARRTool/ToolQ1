@@ -1167,9 +1167,28 @@ def display_admin_page():
     raw_df = None
     
     if uploaded_file:
-        with st.spinner("อ่านไฟล์เสร็จ! กำลังทำมาตรฐานคอลัมน์ และ merge กลุ่ม/หมวด (ถ้ามี Code2024.xlsx)..."):
-            raw_df = load_data(uploaded_file)   # ใช้ฟังก์ชันอ่านไฟล์เดิมของคุณ
+        with st.spinner("อ่านไฟล์เสร็จ! กำลังทำมาตรฐานคอลัมน์ และ merge กลุ่ม/หมวด (ถ้ามี Code2024.xlsx)..."): 
+            try:
+                raw_df = load_data(uploaded_file)  # ฟังก์ชันอ่านไฟล์เดิมของคุณ
+            except Exception as e:
+                st.error(f"อ่านไฟล์ไม่สำเร็จ: {e}")
+                st.stop()
+            
+            # กัน None / ว่าง
+            if raw_df is None:
+                st.error("ไม่พบข้อมูลในไฟล์ที่อัปโหลด (raw_df = None)")
+                st.stop()
+            
+            if getattr(raw_df, "empty", False):
+                st.error("ไฟล์ไม่มีแถวข้อมูล (DataFrame ว่าง)")
+                st.stop()
+            
+            # ถึงตรงนี้มั่นใจว่ามีข้อมูลแล้ว
             df, missing_cols = normalize_dataframe_columns(raw_df, allcode_path=(codebook_path or None))
+            
+            if df is None or getattr(df, "empty", False):
+                st.error("ไม่สามารถทำคอลัมน์มาตรฐานได้ (ได้ DataFrame ว่างกลับมา)")
+                st.stop()
     
         st.success("อ่านไฟล์สำเร็จ! ทำคอลัมน์มาตรฐานแล้ว และ merge กลุ่ม/หมวดแล้ว (ถ้ามี Code2024.xlsx)")
     
