@@ -1143,38 +1143,50 @@ def display_admin_page():
     </div>
     """, unsafe_allow_html=True)
 
+    codebook_path = st.text_input("พาธไปยัง Code2024.xlsx (ถ้ามี):", value="Code2024.xlsx")    
     uploaded_file = st.file_uploader(
-    "เลือกไฟล์เหตุการณ์ (.xlsx หรือ .csv)",
-    type=["xlsx", "csv"],
-    key="incident_file"
+        "เลือกไฟล์เหตุการณ์ (.xlsx หรือ .csv)",
+        type=["xlsx", "csv"],
+        key="incident_file"
     )
     
-    # 2) ใส่พาธของ Code2024.xlsx (ถ้ามี) เพื่อ merge กลุ่ม/หมวด
-    codebook_path = st.text_input("พาธไปยัง Code2024.xlsx (ถ้ามี):", value="Code2024.xlsx")
+    # ตัวช่วยอ่านได้ทั้ง .xlsx / .csv
+    def _load_any_file(file_obj):
+        name = (file_obj.name or "").lower()
+        try:
+            if name.endswith(".csv"):
+                df = pd.read_csv(file_obj)
+            else:
+                df = pd.read_excel(file_obj, engine="openpyxl", keep_default_na=False)
+            return df
+        except Exception as e:
+            st.error(f"อ่านไฟล์ไม่สำเร็จ: {e}")
+            return pd.DataFrame()
     
-    # 3) ประมวลผล
-    if uploaded_file:
+    # กันตัวแปรยังไม่ถูกกำหนด
+    raw_df = None
+    
+    if uploaded_file is not None:
         with st.spinner("กำลังประมวลผลไฟล์ กรุณารอสักครู่..."):
-            raw_df = load_data(uploaded_file)
+            raw_df = _load_any_file(uploaded_file)
     
             if raw_df is None or raw_df.empty:
                 st.error("ไฟล์ว่างหรืออ่านไม่สำเร็จ")
             else:
-                # ทำให้คอลัมน์เข้ากันได้ + เติมกลุ่ม/หมวดจาก Code2024.xlsx (ถ้ามี)
-                df, missing_cols = normalize_dataframe_columns(raw_df, allcode_path=codebook_path)
+                # ทำคอลัมน์ให้เข้ามาตรฐาน + เติมกลุ่ม/หมวดจาก Code2024.xlsx (ถ้ามี)
+                df, missing_cols = normalize_dataframe_columns(raw_df, allcode_path=(codebook_path or None))
     
-                # เก็บลง session/state เพื่อใช้ต่อทั้งแอป
+                # เก็บไว้ใช้ต่อทั้งแอป
                 st.session_state["DF_MASTER"] = df
     
-                st.success("อ่านไฟล์สำเร็จ! ทำคอลัมน์เข้ามาตรฐานแล้ว")
+                st.success("อ่านไฟล์สำเร็จ! ทำคอลัมน์เข้ามาตรฐานแล้ว และ merge กลุ่ม/หมวด (ถ้ามี Code2024.xlsx)")
                 if missing_cols:
-                    st.warning("คอลัมน์ที่ยังว่างทั้งหมด (จะพยายามดำเนินการต่อได้): " + ", ".join(missing_cols))
+                    st.warning("คอลัมน์ที่ยังขาด (จะแสดงเป็นค่าว่าง/พยายามดำเนินการต่อ): " + ", ".join(missing_cols))
     
-                # แสดงหัวตารางให้ตรวจสอบเร็ว ๆ
                 with st.expander("ดูตัวอย่างข้อมูล (หัว 10 แถว)"):
                     st.dataframe(df.head(10), use_container_width=True)
     else:
-        st.info("โปรดอัปโหลดไฟล์เหตุการณ์ (.xlsx)")
+        st.info("โปรดอัปโหลดไฟล์เหตุการณ์ (.xlsx หรือ .csv) เพื่อเริ่มประมวลผล")
     
         # --- ทำให้คอลัมน์เข้ากันได้ + เติมกลุ่ม/หมวดจาก Code2024.xlsx (ถ้าระบุพาธ) ---
         df, missing_cols = normalize_dataframe_columns(raw_df, allcode_path=(codebook_path or None))
