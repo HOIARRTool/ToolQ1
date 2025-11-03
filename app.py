@@ -1211,12 +1211,7 @@ def display_admin_page():
     
     # เก็บไว้ใช้ต่อในส่วนอื่นของแอป
     st.session_state["raw_df"] = raw_df
-    st.session_state["df"] = df
-
-    
-        # แจ้งเตือนถ้ายังมีคอลัมน์มาตรฐานที่ไม่มีข้อมูล (จะยังทำงานต่อได้)
-        if missing_cols:
-            st.warning("คอลัมน์มาตรฐานที่ยังไม่มีข้อมูล: " + ", ".join(missing_cols))
+    st.session_state["df"] = df       
 
     # --- ฟังก์ชันช่วย: แปลงสตริงปี พ.ศ. เป็น ค.ศ. ---
     def convert_be_str_to_ad_str(be_date_str):
