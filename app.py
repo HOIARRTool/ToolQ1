@@ -27,9 +27,30 @@ except ImportError:
 from risk_register_assistant import get_risk_register_consultation
 import re
 
-def anonymize_text(text: str, ner_model=None) -> str:
+import re
+
+def anonymize_text(text: str) -> str:
+    """คืนข้อความที่ปกปิดข้อมูลระบุตัวบุคคลพื้นฐาน เช่น HN, เบอร์โทร, เลขบัตร, อีเมล"""
     if not isinstance(text, str):
         return text
+
+    # HN: HN 123456 / HN:123456 / HN-123456
+    text = re.sub(r'(?i)\bHN[\s\.:#-]*\d{4,10}\b', 'HN.XXXXXX', text)
+
+    # เบอร์โทรไทย (10 หลัก เริ่ม 0) – กันรูปแบบที่คั่นด้วยช่องว่าง/ขีด
+    text = re.sub(r'\b0\d(?:[-\s]?\d){8}\b', '0X-XXX-XXXX', text)
+
+    # บัตร ปชช.ไทย 13 หลัก (คร่าว ๆ)
+    text = re.sub(r'\b\d{1}[-\s]?\d{4}[-\s]?\d{5}[-\s]?\d{2}[-\s]?\d{1}\b', 'X-XXXX-XXXXX-XX-X', text)
+
+    # อีเมล
+    text = re.sub(r'\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b', 'user@masked.xx', text, flags=re.IGNORECASE)
+
+    # ชื่อ-สกุลในวงเล็บ/เครื่องหมาย (อย่างหยาบ) เช่น (นายสมชาย) -> (คุณ…)
+    text = re.sub(r'[\(\[]\s*(นาย|นางสาว|นาง|ด\.ช\.|ด\.ญ\.)?[^\(\)\[\]]{1,30}[\)\]]', '(คุณ…)', text)
+
+    return text
+
 from compat_columns import normalize_dataframe_columns
 
     # 1) ปกปิด HN ทุกแบบ: HN 123456 / HN:123456 / HN.123456 / HN-123456
