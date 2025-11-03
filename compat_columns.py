@@ -4,94 +4,104 @@ import pandas as pd
 
 
 def _coerce_code_str(series: pd.Series) -> pd.Series:
-    """บังคับคีย์ให้เป็นสตริงสะอาด (ตัด .0 ท้ายค่าตัวเลข, ตัดช่องว่าง)"""
     def _norm(x):
         if pd.isna(x):
             return pd.NA
         s = str(x).strip()
-        s = re.sub(r"\.0$", "", s)  # ตัด .0 จากเลขที่มาจาก Excel
+        s = re.sub(r"\.0$", "", s)  # ตัด .0 ที่หลงมาจากเลข
         s = s.replace(",", "")
         return s
     return series.map(_norm).astype("string")
 
 
 def normalize_dataframe_columns(raw_df: pd.DataFrame, allcode_path: str | None = None):
-    """
-    - ทำคอลัมน์ให้เข้ามาตรฐานขั้นต่ำสำหรับแอป
-    - ถ้ามี codebook (Code2024.xlsx) จะ merge 'กลุ่มอุบัติการณ์' และ 'หมวด'
-    คืนค่า: (df, missing_cols)
-    """
+    # ถ้าได้ None เข้ามา ให้คืน DataFrame ว่าง + missing=[] เพื่อไม่ให้โค้ดส่วนอื่น error
+    if raw_df is None:
+        return pd.DataFrame(), []
+
     df = raw_df.copy()
 
-    # 1) จัดการคอลัมน์คีย์
-    if "รหัสหัวข้อ" not in df.columns and "รหัสรายงาน" in df.columns:
-        df["รหัสหัวข้อ"] = df["รหัสรายงาน"]
+    # ----- map คีย์มาตรฐานจากคอลัมน์ของคุณ -----
+    # รหัสหัวข้อ: ใช้ 'รหัสรายงาน' ถ้ามี ไม่งั้นลอง 'In.HCode' ถัดไป
+    if "รหัสรายงาน" in df.columns:
+        df["รหัสหัวข้อ"] = _coerce_code_str(df["รหัสรายงาน"])
+    elif "In.HCode" in df.columns:
+        df["รหัสหัวข้อ"] = _coerce_code_str(df["In.HCode"])
+    else:
+        df["รหัสหัวข้อ"] = pd.NA
 
-    if "รหัสหัวข้อ" in df.columns:
-        df["รหัสหัวข้อ"] = _coerce_code_str(df["รหัสหัวข้อ"])
+    # หัวข้อ
+    if "Incident" in df.columns:
+        df["หัวข้อ"] = df["Incident"].astype("string")
+    else:
+        df["หัวข้อ"] = pd.NA
 
-    # 2) รายการคอลัมน์ที่ถ้ายังไม่มี/ได้ไม่ครบ จะรายงานกลับ (แต่ไม่หยุดทำงาน)
-    required_min = [
-        "รหัสหัวข้อ", "หัวข้อ", "วัน-เวลา ที่เกิดเหตุ",
-        "ระดับความรุนแรง", "สรุปปัญหา/เหตุการณ์โดยย่อ",
-        "กลุ่มอุบัติการณ์", "หมวด"
-    ]
-    missing_cols: list[str] = [c for c in required_min if c not in df.columns]
+    # วัน-เวลา ที่เกิดเหตุ = วดป.ที่เกิด + ช่อง 'ช่วงเวลา/เวร' (ถ้ามี)
+    base = df["วดป.ที่เกิด"].astype("string") if "วดป.ที่เกิด" in df.columns else pd.Series(pd.NA, index=df.index, dtype="string")
+    if "ช่วงเวลา/เวร" in df.columns:
+        df["วัน-เวลา ที่เกิดเหตุ"] = (base.fillna("") + " " + df["ช่วงเวลา/เวร"].astype("string").fillna("")).str.strip()
+        df.loc[df["วัน-เวลา ที่เกิดเหตุ"] == "", "วัน-เวลา ที่เกิดเหตุ"] = pd.NA
+    else:
+        df["วัน-เวลา ที่เกิดเหตุ"] = base
 
-    # 3) โหลด codebook และ merge กลุ่ม/หมวด (ถ้าให้พาธมา)
+    # ระดับความรุนแรง
+    if "ความรุนแรง" in df.columns:
+        df["ระดับความรุนแรง"] = df["ความรุนแรง"].astype("string")
+    else:
+        df["ระดับความรุนแรง"] = pd.NA
+
+    # สรุปปัญหา/เหตุการณ์โดยย่อ
+    if "รายละเอียดการเกิด" in df.columns:
+        df["สรุปปัญหา/เหตุการณ์โดยย่อ"] = df["รายละเอียดการเกิด"].astype("string")
+    else:
+        df["สรุปปัญหา/เหตุการณ์โดยย่อ"] = pd.NA
+
+    # สร้างช่องว่างไว้ก่อน (ถ้ายังไม่มี)
+    if "กลุ่มอุบัติการณ์" not in df.columns:
+        df["กลุ่มอุบัติการณ์"] = pd.NA
+    if "หมวด" not in df.columns:
+        df["หมวด"] = pd.NA
+
+    # ----- เติมกลุ่ม/หมวดจาก Code2024.xlsx หากระบุไฟล์ -----
     if allcode_path:
         try:
             cb = pd.read_excel(allcode_path, engine="openpyxl")
 
-            # ให้มีคีย์ 'รหัสหัวข้อ' ใน codebook เช่นกัน
-            if "รหัสหัวข้อ" not in cb.columns:
-                if "รหัสรายงาน" in cb.columns:
-                    cb["รหัสหัวข้อ"] = cb["รหัสรายงาน"]
-                else:
-                    cb["รหัสหัวข้อ"] = pd.NA
+            # คีย์ codebook: รองรับได้ทั้ง 'รหัสหัวข้อ' หรือ 'รหัสรายงาน' หรือ 'In.HCode'
+            if "รหัสหัวข้อ" in cb.columns:
+                cb_key = "รหัสหัวข้อ"
+            elif "รหัสรายงาน" in cb.columns:
+                cb_key = "รหัสรายงาน"
+            elif "In.HCode" in cb.columns:
+                cb_key = "In.HCode"
+            else:
+                cb_key = None
 
-            cb["รหัสหัวข้อ"] = _coerce_code_str(cb["รหัสหัวข้อ"])
+            if cb_key:
+                cb = cb.copy()
+                cb["รหัสหัวข้อ"] = _coerce_code_str(cb[cb_key])
 
-            # ให้มีคอลัมน์ผลลัพธ์ที่ต้องการ
-            for col in ["กลุ่มอุบัติการณ์", "หมวด"]:
-                if col not in cb.columns:
-                    cb[col] = pd.NA
+                if "กลุ่มอุบัติการณ์" not in cb.columns:
+                    cb["กลุ่มอุบัติการณ์"] = pd.NA
+                if "หมวด" not in cb.columns:
+                    cb["หมวด"] = pd.NA
 
-            # มีคีย์พอให้ merge ไหม?
-            if "รหัสหัวข้อ" in df.columns and df["รหัสหัวข้อ"].notna().any():
+                # บังคับฝั่งซ้ายให้เป็น string แล้ว merge
+                df["รหัสหัวข้อ"] = _coerce_code_str(df["รหัสหัวข้อ"])
                 df = df.merge(
                     cb[["รหัสหัวข้อ", "กลุ่มอุบัติการณ์", "หมวด"]],
                     on="รหัสหัวข้อ",
                     how="left",
                     suffixes=("", "_cb"),
                 )
-
-                # ถ้าด้านซ้ายว่าง ให้เติมค่าที่ merge มา
+                # ถ้าเดิมไม่มีค่า ให้ใช้ค่าจาก codebook
                 for col in ["กลุ่มอุบัติการณ์", "หมวด"]:
-                    if col in df.columns and f"{col}_cb" in df.columns:
+                    if f"{col}_cb" in df.columns:
                         df[col] = df[col].fillna(df[f"{col}_cb"])
                         df.drop(columns=[f"{col}_cb"], inplace=True, errors="ignore")
-            else:
-                # ไม่มีคีย์จะ merge
-                for col in ["กลุ่มอุบัติการณ์", "หมวด"]:
-                    if col not in df.columns:
-                        df[col] = pd.NA
-                missing_cols.extend(["กลุ่มอุบัติการณ์", "หมวด"])
+        except Exception:
+            # ไม่เตือน/ไม่หยุด — ยึดตามที่ขอ
+            pass
 
-        except Exception as e:
-            print(f"[compat_columns] โหลด {allcode_path} ไม่ได้: {e}")
-            # ถ้าโหลดไม่ได้ ให้สร้างคอลัมน์เปล่าไว้ก่อน
-            for col in ["กลุ่มอุบัติการณ์", "หมวด"]:
-                if col not in df.columns:
-                    df[col] = pd.NA
-            missing_cols.extend(["กลุ่มอุบัติการณ์", "หมวด"])
-    else:
-        # ไม่ได้ระบุ codebook: สร้างคอลัมน์ว่างไว้ก่อน
-        for col in ["กลุ่มอุบัติการณ์", "หมวด"]:
-            if col not in df.columns:
-                df[col] = pd.NA
-        missing_cols.extend(["กลุ่มอุบัติการณ์", "หมวด"])
-
-    # unique และรักษาลำดับ
-    missing_cols = list(dict.fromkeys(missing_cols))
-    return df, missing_cols
+    # ไม่สนใจว่าจะ “ขาด” อะไร — คืนค่า df และ missing=[] เสมอ
+    return df, []
