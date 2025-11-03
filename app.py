@@ -26,8 +26,7 @@ except ImportError:
     genai = None
 from risk_register_assistant import get_risk_register_consultation
 import re
-
-import re
+from compat_columns import normalize_dataframe_columns
 
 def anonymize_text(text: str) -> str:
     """คืนข้อความที่ปกปิดข้อมูลระบุตัวบุคคลพื้นฐาน เช่น HN, เบอร์โทร, เลขบัตร, อีเมล"""
