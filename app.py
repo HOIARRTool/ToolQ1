@@ -30,6 +30,7 @@ import re
 def anonymize_text(text: str, ner_model=None) -> str:
     if not isinstance(text, str):
         return text
+from compat_columns import normalize_dataframe_columns
 
     # 1) ปกปิด HN ทุกแบบ: HN 123456 / HN:123456 / HN.123456 / HN-123456
     text = re.sub(r'(?i)\bHN[\s\.:#-]*\d{4,10}\b', 'HN.XXXXXX', text)
@@ -1136,8 +1137,18 @@ def display_admin_page():
     </div>
     """, unsafe_allow_html=True)
 
-    uploaded_file = st.file_uploader("เลือกไฟล์ของคุณที่นี่:", type=[".xlsx", ".csv"])
+    uploaded_file = st.file_uploader("เลือกไฟล์ของคุณที่นี่:", type=[".xlsx"])
+    codebook_path = st.text_input("พาธไปยัง Code2024.xlsx (ถ้ามี):", value="Code2024.xlsx")
 
+    if uploaded_file:
+        with st.spinner("กำลังประมวลผลไฟล์ กรุณารอสักครู่..."):
+            raw_df = load_data(uploaded_file)
+            if not raw_df.empty:
+                # --- ทำให้คอลัมน์เข้ากันได้ + เติมกลุ่ม/หมวดจาก Code2024.xlsx ---
+                df, missing_cols = normalize_dataframe_columns(raw_df, allcode_path=codebook_path)
+    
+                if missing_cols:
+                    st.warning(f"คอลัมน์ที่ยังขาด (จะพยายามดำเนินการต่อ): {', '.join(missing_cols)}")
     if not uploaded_file:
         return
 
