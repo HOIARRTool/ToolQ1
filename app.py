@@ -51,19 +51,6 @@ def anonymize_text(text: str) -> str:
 
     return text
 
-from compat_columns import normalize_dataframe_columns
-
-    # 1) ปกปิด HN ทุกแบบ: HN 123456 / HN:123456 / HN.123456 / HN-123456
-    text = re.sub(r'(?i)\bHN[\s\.:#-]*\d{4,10}\b', 'HN.XXXXXX', text)
-
-    # 2) (ถ้ามี NER) ให้ NER ทำต่อได้ตามเดิม (แต่ต้องระวังอย่าไป unmask)
-    #    ตรงนี้สมมุติว่า anonymizer ของคุณทำงานบนสตริงทั้งก้อน
-    #    ถ้าไม่มี ก็ข้ามได้
-    # if ner_model:
-    #     text = your_ner_masker(text, ner_model)
-
-    return text
-
 # ==============================================================================
 # --- 1. การตั้งค่าและตัวแปรหลัก ---
 # ==============================================================================
