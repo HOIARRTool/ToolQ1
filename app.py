@@ -1142,19 +1142,19 @@ def display_admin_page():
       </ul>
     </div>
     """, unsafe_allow_html=True)
-
-    # --- ที่ส่วนต้นไฟล์ (ให้มีบรรทัดนี้อยู่แล้ว) ---    
-    codebook_path = st.text_input("พาธไปยัง Code2024.xlsx (ถ้ามี):", value="Code2024.xlsx")    
+# ===== Upload & Normalize (ยึดไฟล์คุณเท่านั้น / ไม่เตือน) =====
+    codebook_path = st.text_input("พาธไปยัง Code2024.xlsx (ถ้ามี):", value="Code2024.xlsx")
+    
     uploaded_file = st.file_uploader(
         "เลือกไฟล์เหตุการณ์ (.xlsx หรือ .csv)",
         type=["xlsx", "csv"],
-        key="incident_file",
+        key="incident_file"
     )
     
-    # ตัวช่วยอ่านได้ทั้ง .xlsx / .csv (ใช้เป็น fallback หาก load_data ใช้ไม่ได้)
+    # ป้องกันซ้ำซ้อน: ลบบล็อก file_uploader อื่นในไฟล์นี้ทิ้งให้หมด เหลือบล็อกนี้บล็อกเดียว
+    
     def _load_any_file(file_obj):
-        import pandas as pd
-        name = (getattr(file_obj, "name", "") or "").lower()
+        name = (file_obj.name or "").lower()
         try:
             if name.endswith(".csv"):
                 return pd.read_csv(file_obj)
@@ -1163,55 +1163,28 @@ def display_admin_page():
             st.error(f"อ่านไฟล์ไม่สำเร็จ: {e}")
             return pd.DataFrame()
     
-    # กันตัวแปร
     raw_df = None
     df = None
-    missing_cols = []
     
-    if not uploaded_file:
-        st.warning("กรุณาเลือกไฟล์ .xlsx หรือ .csv ของเหตุการณ์")
-        st.stop()
-    
-    with st.spinner("กำลังอ่านไฟล์และทำคอลัมน์มาตรฐาน..."):
-        # พยายามใช้ฟังก์ชันอ่านไฟล์เดิมของแอปก่อน
-        try:
-            raw_df = load_data(uploaded_file)  # ถ้าไม่มีฟังก์ชันนี้ ให้ใช้ _load_any_file แทน
-        except Exception:
+    if uploaded_file:
+        with st.spinner("กำลังอ่านและปรับคอลัมน์ตามไฟล์ของคุณ..."):
+            # ถ้าคุณมีฟังก์ชัน load_data เดิมและอยากใช้ต่อ ให้สลับบรรทัดนี้แทน:
+            # raw_df = load_data(uploaded_file)
             raw_df = _load_any_file(uploaded_file)
     
-        # กัน None / ว่าง
-        if raw_df is None:
-            st.error("ไม่พบข้อมูลในไฟล์ที่อัปโหลด (raw_df = None)")
-            st.stop()
-        if getattr(raw_df, "empty", False):
-            st.error("ไฟล์ไม่มีแถวข้อมูล (DataFrame ว่าง)")
-            st.stop()
+            # ให้ compat_columns ทำงาน (จะไม่เตือน/ไม่หยุด)
+            from compat_columns import normalize_dataframe_columns
+            df, _ = normalize_dataframe_columns(raw_df, allcode_path=(codebook_path or None))
     
-        # ทำให้คอลัมน์เข้ามาตรฐาน + merge กลุ่ม/หมวด (ถ้ามี Code2024.xlsx)
-        df, missing_cols = normalize_dataframe_columns(raw_df, allcode_path=(codebook_path or None))
+        # เก็บเข้า session ไว้ใช้ต่อทั้งแอป
+        st.session_state["raw_df"] = raw_df
+        st.session_state["df"] = df
     
-        if df is None or getattr(df, "empty", False):
-            st.error("ไม่สามารถทำคอลัมน์มาตรฐานได้ (ได้ DataFrame ว่างกลับมา)")
-            st.stop()
-    
-    st.success("อ่านไฟล์สำเร็จ! ทำคอลัมน์มาตรฐานแล้ว และ merge กลุ่ม/หมวดแล้ว (ถ้ามี Code2024.xlsx)")
-    
-    # แสดงตัวอย่างข้อมูล
-    st.dataframe(df.head(10))
-    
-    # แจ้งคอลัมน์ที่ยังขาด (ไม่บล็อกการทำงาน เว้นแต่ขาดคอลัมน์หลัก)
-    core_missing = [c for c in ["รหัสหัวข้อ","หัวข้อ","วัน-เวลา ที่เกิดเหตุ","ระดับความรุนแรง","สรุปปัญหา/เหตุการณ์โดยย่อ"]
-                    if c in missing_cols]
-    if core_missing:
-        st.warning("คอลัมน์หลักที่ยังขาด: " + ", ".join(core_missing))
-    
-    soft_missing = [c for c in ["กลุ่มอุบัติการณ์","หมวด"] if c in missing_cols]
-    if soft_missing:
-        st.info("ยังไม่มี " + ", ".join(soft_missing) + " (ระบบสามารถเติมภายหลังจาก Code2024.xlsx ได้)")
-    
-    # เก็บไว้ใช้ต่อในส่วนอื่นของแอป
-    st.session_state["raw_df"] = raw_df
-    st.session_state["df"] = df       
+        st.success("พร้อมใช้งานแล้ว")
+        st.dataframe(df.head(10))
+    else:
+        st.info("อัปโหลดไฟล์ .xlsx หรือ .csv เพื่อเริ่มใช้งานครับ")
+
 
     # --- ฟังก์ชันช่วย: แปลงสตริงปี พ.ศ. เป็น ค.ศ. ---
     def convert_be_str_to_ad_str(be_date_str):
