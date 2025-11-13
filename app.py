@@ -84,14 +84,14 @@ st.markdown(
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
 
-    /* ✅ --- START: แก้ไขการกำหนดฟอนต์ --- */
-    /* กำหนดฟอนต์ 'Kanit' ให้กับส่วนหลักของแอป โดยไม่กระทบไอคอน */
+    # ✅ --- START: แก้ไขการกำหนดฟอนต์ --- 
+    # กำหนดฟอนต์ 'Kanit' ให้กับส่วนหลักของแอป โดยไม่กระทบไอคอน 
     html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"] {
         font-family: 'Kanit', sans-serif;
     }
-    /* ✅ --- END: สิ้นสุดการแก้ไข --- */
+    # ✅ --- END: สิ้นสุดการแก้ไข --- */
 
-    /* --- Gradient Text for Sidebar Title --- */
+    # --- Gradient Text for Sidebar Title --- */
     .gradient-text {
         background-image: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #bc1888, #833ab4);
         -webkit-background-clip: text;
@@ -101,7 +101,7 @@ st.markdown(
         display: inline-block;
     }
 
-    /* --- Original App Styles --- */
+    # --- Original App Styles --- */
     [data-testid="stChatInput"] textarea { min-height: 80px; height: 100px; resize: vertical; background-color: transparent; border: none; }
 
     .metric-box {
@@ -909,21 +909,21 @@ def prioritize_incidents_nb_logit_v2(_df: pd.DataFrame,
         <style>
             @page {{
                 size: A4;
-                margin: 2cm 1.5cm; /* เพิ่ม margin บนล่างเล็กน้อยเพื่อให้มีที่สำหรับ footer */
+                margin: 2cm 1.5cm; # เพิ่ม margin บนล่างเล็กน้อยเพื่อให้มีที่สำหรับ footer */
 
-                /* สร้าง footer ที่มุมขวาล่าง */
+                # สร้าง footer ที่มุมขวาล่าง */
                 @bottom-center {{
                     content: "หน้า " counter(page) " / " counter(pages);
                     font-family: "TH SarabunPSK", sans-serif;
                     font-size: 9pt;
-                    color: #888; /* สีเทา */
+                    color: #888; # สีเทา #
                 }}
             }}
-            /* --- จบส่วนที่แก้ไข --- */
+            # --- จบส่วนที่แก้ไข --- #
             body {{ font-family: "TH SarabunPSK", sans-serif; font-size: 12pt; }}
             h1, h2, h3 {{ font-family: "TH SarabunPSK", sans-serif; color: #001f3f; border-bottom: 2px solid #001f3f; padding-bottom: 5px;}}
-            h2 {{ page-break-before: always; }} /* ขึ้นหน้าใหม่ทุกครั้งที่เจอ h2 */
-            h1 + h2 {{ page-break-before: auto; }} /* ยกเว้น h2 แรกสุด */
+            h2 {{ page-break-before: always; }} # ขึ้นหน้าใหม่ทุกครั้งที่เจอ h2 
+            h1 + h2 {{ page-break-before: auto; }} # ยกเว้น h2 แรกสุด 
             .styled-table {{ width: 100%; border-collapse: collapse; margin-top: 1em; table-layout: fixed; }}
             .styled-table th, .styled-table td {{ border: 1px solid #ddd; padding: 6px; text-align: left; word-wrap: break-word; }}
             .styled-table th {{ background-color: #f2f2f2;  }}
