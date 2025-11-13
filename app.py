@@ -62,7 +62,25 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin1234")
 # ==============================================================================
 LOGO_URL = "https://raw.githubusercontent.com/HOIARRTool/hoiarr/refs/heads/main/logo1.png"
 st.set_page_config(page_title="HOIA-RR", page_icon=LOGO_URL, layout="wide")
-st.markdown("""
+
+# URLs ของโลโก้ทั้ง 4
+logo_urls = [
+    "https://github.com/HOIARRTool/appqtbi/blob/main/messageImage_1763018963411.jpg?raw=true",
+    "https://github.com/HOIARRTool/appqtbi/blob/main/messageImage_1763018987241.jpg?raw=true",
+    "https://github.com/HOIARRTool/appqtbi/blob/main/messageImage_1763018997310.jpg?raw=true",
+    "https://github.com/HOIARRTool/appqtbi/blob/main/logoSHS.png?raw=true"
+]
+
+# แสดงโลโก้เรียงกัน 4 อันขนาดเท่ากัน
+cols = st.columns(4)
+for col, url in zip(cols, logo_urls):
+    col.image(url, use_column_width=True)  # หรือจะกำหนด width คงที่ก็ได้ เช่น width=120
+
+# ข้อความ HOIA-RR Manu อยู่บรรทัดถัดไป
+st.markdown(
+    "<h2 style='text-align: center; margin-top: 10px;'>HOIA-RR Manu</h2>",
+    unsafe_allow_html=True
+)
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
 
