@@ -81,20 +81,19 @@ st.markdown(
     "<h2 style='text-align: center; margin-top: 10px;'>HOIA-RR Manu</h2>",
     unsafe_allow_html=True
 )
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+
 # กำหนด CSS สำหรับฟอนต์ + สไตล์อื่น ๆ
 st.markdown(
     """
     <style>
-    /* ✅ --- START: แก้ไขการกำหนดฟอนต์ --- */
-    /* กำหนดฟอนต์ 'Kanit' ให้กับส่วนหลักของแอป โดยไม่กระทบไอคอน */
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+
+    /* ✅ ฟอนต์หลักของแอป */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"] {
         font-family: 'Kanit', sans-serif;
     }
-    /* ✅ --- END: สิ้นสุดการแก้ไข --- */
 
-    /* --- Gradient Text for Sidebar Title --- */
+    /* Gradient Text สำหรับ title บางจุด */
     .gradient-text {
         background-image: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #bc1888, #833ab4);
         -webkit-background-clip: text;
@@ -104,7 +103,7 @@ st.markdown(
         display: inline-block;
     }
 
-    /* --- Original App Styles --- */
+    /* กล่อง input ด้านล่าง (chat input) */
     [data-testid="stChatInput"] textarea {
         min-height: 80px;
         height: 100px;
@@ -112,10 +111,8 @@ st.markdown(
         background-color: transparent;
         border: none;
     }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+
+    /* กล่อง metric แบบ custom */
     .metric-box {
         border: 1px solid #ddd;
         padding: 10px;
@@ -132,53 +129,120 @@ st.markdown(
     .metric-box-6 { background-color: #ffecb3; border-color: #ffd54f; }
     .metric-box-7 { background-color: #ffcdd2; border-color: #ef9a9a; }
 
+    /* ตารางสรุป */
     .summary-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    .summary-table th, .summary-table td { border: 1px solid #ddd; padding: 8px; text-align: left; word-wrap: break-word; overflow-wrap: break-word; }
+    .summary-table th, .summary-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
     .summary-table th { background-color: #f2f2f2; }
+
     .summary-table-4-col th:nth-child(1), .summary-table-4-col td:nth-child(1) { width: 20%; }
     .summary-table-4-col th:nth-child(2), .summary-table-4-col td:nth-child(2) { width: 20%; }
     .summary-table-4-col th:nth-child(3), .summary-table-4-col td:nth-child(3) { width: 10%; }
     .summary-table-4-col th:nth-child(4), .summary-table-4-col td:nth-child(4) { width: 50%; }
+
     .summary-table-5-col th:nth-child(1), .summary-table-5-col td:nth-child(1) { width: 15%; }
     .summary-table-5-col th:nth-child(2), .summary-table-5-col td:nth-child(2) { width: 15%; }
     .summary-table-5-col th:nth-child(3), .summary-table-5-col td:nth-child(3) { width: 20%; }
     .summary-table-5-col th:nth-child(4), .summary-table-5-col td:nth-child(4) { width: 10%; }
     .summary-table-5-col th:nth-child(5), .summary-table-5-col td:nth-child(5) { width: 40%; }
+
     .summary-table-6-col th:nth-child(1), .summary-table-6-col td:nth-child(1) { width: 12%; }
     .summary-table-6-col th:nth-child(2), .summary-table-6-col td:nth-child(2) { width: 12%; }
     .summary-table-6-col th:nth-child(3), .summary-table-6-col td:nth-child(3) { width: 20%; }
     .summary-table-6-col th:nth-child(4), .summary-table-6-col td:nth-child(4) { width: 16%; }
     .summary-table-6-col th:nth-child(5), .summary-table-6-col td:nth-child(5) { width: 8%; }
     .summary-table-6-col th:nth-child(6), .summary-table-6-col td:nth-child(6) { width: 32%; }
-</style>
-""", unsafe_allow_html=True)
-st.markdown("""
-<style>
-@media print {
-    div[data-testid="stHorizontalBlock"] { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 1.2rem !important; }
-    .stDataFrame, .stTable { break-inside: avoid; page-break-inside: avoid; }
-    thead, tr, th, td { break-inside: avoid !important; page-break-inside: avoid !important; }
-    h1, h2, h3, h4, h5 { page-break-after: avoid; }
-}
-.custom-header { font-size: 20px; font-weight: bold; margin-top: 0px !important; padding-top: 0px !important; }
-div[data-testid="stHorizontalBlock"] > div div[data-testid="stMetric"] { border: 1px solid #ddd; padding: 0.75rem; border-radius: 0.5rem; height: 100%; display: flex; flex-direction: column; justify-content: center; }
-div[data-testid="stHorizontalBlock"] > div:nth-child(1) div[data-testid="stMetric"] { background-color: #e6fffa; border-color: #b2f5ea; }
-div[data-testid="stHorizontalBlock"] > div:nth-child(2) div[data-testid="stMetric"] { background-color: #fff3e0; border-color: #ffe0b2; }
-div[data-testid="stHorizontalBlock"] > div:nth-child(3) div[data-testid="stMetric"] { background-color: #fce4ec; border-color: #f8bbd0; }
-div[data-testid="stHorizontalBlock"] > div:nth-child(4) div[data-testid="stMetric"] { background-color: #e3f2fd; border-color: #bbdefb; }
-div[data-testid="stHorizontalBlock"] > div div[data-testid="stMetric"] [data-testid="stMetricLabel"] > div,
-div[data-testid="stHorizontalBlock"] > div div[data-testid="stMetric"] [data-testid="stMetricValue"],
-div[data-testid="stHorizontalBlock"] > div div[data-testid="stMetric"] [data-testid="stMetricDelta"] { color: #262730 !important; }
-div[data-testid="stMetric"] [data-testid="stMetricLabel"] > div { font-size: 0.8rem !important; line-height: 1.2 !important; white-space: normal !important; overflow-wrap: break-word !important; word-break: break-word; display: block !important; }
-div[data-testid="stMetric"] [data-testid="stMetricValue"] { font-size: 1.3rem !important; }
-div[data-testid="stMetric"] [data-testid="stMetricDelta"] { font-size: 0.75rem !important; }
-div[data-testid="stHorizontalBlock"] > div .stExpander { border: none !important; box-shadow: none !important; padding: 0 !important; margin-top: 0.5rem; }
-div[data-testid="stHorizontalBlock"] > div .stExpander header { padding: 0.25rem 0.5rem !important; font-size: 0.75rem !important; border-radius: 0.25rem; }
-div[data-testid="stHorizontalBlock"] > div .stExpander div[data-testid="stExpanderDetails"] { max-height: 200px; overflow-y: auto; }
-.stDataFrame table td, .stDataFrame table th { color: black !important; font-size: 0.9rem !important; }
-.stDataFrame table th { font-weight: bold !important; }
-</style>
-""", unsafe_allow_html=True)
+
+    /* ส่วนสำหรับตอนสั่งพิมพ์ (print) */
+    @media print {
+        div[data-testid="stHorizontalBlock"] {
+            display: grid !important;
+            grid-template-columns: repeat(5, 1fr) !important;
+            gap: 1.2rem !important;
+        }
+        .stDataFrame, .stTable { break-inside: avoid; page-break-inside: avoid; }
+        thead, tr, th, td { break-inside: avoid !important; page-break-inside: avoid !important; }
+        h1, h2, h3, h4, h5 { page-break-after: avoid; }
+    }
+
+    .custom-header {
+        font-size: 20px;
+        font-weight: bold;
+        margin-top: 0px !important;
+        padding-top: 0px !important;
+    }
+
+    /* ปรับ metric ของ Streamlit ให้ดูเป็นกล่องสวย ๆ */
+    div[data-testid="stHorizontalBlock"] > div div[data-testid="stMetric"] {
+        border: 1px solid #ddd;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    div[data-testid="stHorizontalBlock"] > div:nth-child(1) div[data-testid="stMetric"] { background-color: #e6fffa; border-color: #b2f5ea; }
+    div[data-testid="stHorizontalBlock"] > div:nth-child(2) div[data-testid="stMetric"] { background-color: #fff3e0; border-color: #ffe0b2; }
+    div[data-testid="stHorizontalBlock"] > div:nth-child(3) div[data-testid="stMetric"] { background-color: #fce4ec; border-color: #f8bbd0; }
+    div[data-testid="stHorizontalBlock"] > div:nth-child(4) div[data-testid="stMetric"] { background-color: #e3f2fd; border-color: #bbdefb; }
+
+    div[data-testid="stHorizontalBlock"] > div div[data-testid="stMetric"] [data-testid="stMetricLabel"] > div,
+    div[data-testid="stHorizontalBlock"] > div div[data-testid="stMetric"] [data-testid="stMetricValue"],
+    div[data-testid="stHorizontalBlock"] > div div[data-testid="stMetric"] [data-testid="stMetricDelta"] {
+        color: #262730 !important;
+    }
+
+    div[data-testid="stMetric"] [data-testid="stMetricLabel"] > div {
+        font-size: 0.8rem !important;
+        line-height: 1.2 !important;
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+        word-break: break-word;
+        display: block !important;
+    }
+
+    div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+        font-size: 1.3rem !important;
+    }
+
+    div[data-testid="stMetric"] [data-testid="stMetricDelta"] {
+        font-size: 0.75rem !important;
+    }
+
+    div[data-testid="stHorizontalBlock"] > div .stExpander {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin-top: 0.5rem;
+    }
+    div[data-testid="stHorizontalBlock"] > div .stExpander header {
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.75rem !important;
+        border-radius: 0.25rem;
+    }
+    div[data-testid="stHorizontalBlock"] > div .stExpander div[data-testid="stExpanderDetails"] {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .stDataFrame table td,
+    .stDataFrame table th {
+        color: black !important;
+        font-size: 0.9rem !important;
+    }
+    .stDataFrame table th {
+        font-weight: bold !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 
 # ==============================================================================
