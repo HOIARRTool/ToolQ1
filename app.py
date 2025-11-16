@@ -91,14 +91,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ข้อความ HOIA-RR Menu อยู่บรรทัดถัดไป (ยังอยู่ตรงกลางได้เหมือนเดิม)
-st.markdown(
-    "<h2 style='text-align: center; margin-top: 10px;'>HOIA-RR Menu</h2>",
-    unsafe_allow_html=True
-)
-
-
-# กำหนด CSS สำหรับฟอนต์ + สไตล์อื่น ๆ
 st.markdown(
     """
     <style>
