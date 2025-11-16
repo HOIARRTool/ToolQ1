@@ -70,17 +70,33 @@ logo_urls = [
     "https://mfu.ac.th/fileadmin/_processed_/6/7/csm_logo_mfu_3d_colour_15e5a7a50f.png",
     "https://github.com/HOIARRTool/appqtbi/blob/main/logoSHS.png?raw=true"
 ]
+st.set_page_config(page_title="HOIA-RR", page_icon=LOGO_URL, layout="wide")
 
-# แสดงโลโก้เรียงกัน 4 อันขนาดเท่ากัน
-cols = st.columns(4)
-for col, url in zip(cols, logo_urls):
-    col.image(url, use_column_width=True)  # หรือจะกำหนด width คงที่ก็ได้ เช่น width=120
+st.markdown(
+    """
+    <div style="
+        width: 100%;
+        display: flex;
+        justify-content: flex-end;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 8px 24px 0 0;
+    ">
+        <img src="https://github.com/HOIARRTool/appqtbi/blob/main/messageImage_1763018987241.jpg?raw=true" style="height:60px;">
+        <img src="https://github.com/HOIARRTool/appqtbi/blob/main/messageImage_1763018963411.jpg?raw=true" style="height:60px;">
+        <img src="https://mfu.ac.th/fileadmin/_processed_/6/7/csm_logo_mfu_3d_colour_15e5a7a50f.png" style="height:60px;">
+        <img src="https://github.com/HOIARRTool/appqtbi/blob/main/logoSHS.png?raw=true" style="height:60px;">
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
-# ข้อความ HOIA-RR Manu อยู่บรรทัดถัดไป
+# ข้อความ HOIA-RR Manu อยู่บรรทัดถัดไป (ยังอยู่ตรงกลางได้เหมือนเดิม)
 st.markdown(
     "<h2 style='text-align: center; margin-top: 10px;'>HOIA-RR Manu</h2>",
     unsafe_allow_html=True
 )
+
 
 # กำหนด CSS สำหรับฟอนต์ + สไตล์อื่น ๆ
 st.markdown(
