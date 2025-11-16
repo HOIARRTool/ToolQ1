@@ -83,15 +83,18 @@ st.markdown(
 )
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
-
-    # ✅ --- START: แก้ไขการกำหนดฟอนต์ --- 
-    # กำหนดฟอนต์ 'Kanit' ให้กับส่วนหลักของแอป โดยไม่กระทบไอคอน 
+# กำหนด CSS สำหรับฟอนต์ + สไตล์อื่น ๆ
+st.markdown(
+    """
+    <style>
+    /* ✅ --- START: แก้ไขการกำหนดฟอนต์ --- */
+    /* กำหนดฟอนต์ 'Kanit' ให้กับส่วนหลักของแอป โดยไม่กระทบไอคอน */
     html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"] {
         font-family: 'Kanit', sans-serif;
     }
-    # ✅ --- END: สิ้นสุดการแก้ไข --- */
+    /* ✅ --- END: สิ้นสุดการแก้ไข --- */
 
-    # --- Gradient Text for Sidebar Title --- */
+    /* --- Gradient Text for Sidebar Title --- */
     .gradient-text {
         background-image: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #bc1888, #833ab4);
         -webkit-background-clip: text;
@@ -101,9 +104,18 @@ st.markdown(
         display: inline-block;
     }
 
-    # --- Original App Styles --- */
-    [data-testid="stChatInput"] textarea { min-height: 80px; height: 100px; resize: vertical; background-color: transparent; border: none; }
-
+    /* --- Original App Styles --- */
+    [data-testid="stChatInput"] textarea {
+        min-height: 80px;
+        height: 100px;
+        resize: vertical;
+        background-color: transparent;
+        border: none;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
     .metric-box {
         border: 1px solid #ddd;
         padding: 10px;
